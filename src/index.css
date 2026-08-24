@@ -1,0 +1,141 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply font-sans antialiased bg-gray-50 text-gray-900 dark:bg-[#0D0D0E] dark:text-gray-100 transition-colors duration-300 selection:bg-red-500 selection:text-white;
+  }
+}
+
+/* Glassmorphism & Liquid Morphism Custom Utilities */
+@layer utilities {
+  .glass-panel {
+    background: rgba(255, 255, 255, 0.75);
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+  }
+  
+  .dark .glass-panel {
+    background: rgba(22, 22, 26, 0.75);
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .glass-card {
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.04);
+  }
+
+  .dark .glass-card {
+    background: rgba(26, 26, 30, 0.75);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  }
+
+  .glass-header {
+    background: rgba(227, 27, 35, 0.92);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  }
+
+  .glass-modal-bg {
+    background: rgba(255, 255, 255, 0.88);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+  }
+
+  .dark .glass-modal-bg {
+    background: rgba(20, 20, 24, 0.88);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+  }
+
+  .liquid-blob-1 {
+    animation: floatBlob 8s ease-in-out infinite alternate;
+  }
+
+  .liquid-blob-2 {
+    animation: floatBlob 12s ease-in-out infinite alternate-reverse;
+  }
+
+  .liquid-red-glow {
+    box-shadow: 0 0 25px rgba(227, 27, 35, 0.35);
+  }
+
+  .liquid-glass-red {
+    background: linear-gradient(135deg, rgba(227, 27, 35, 0.95), rgba(185, 14, 21, 0.98));
+    box-shadow: 0 10px 30px -5px rgba(227, 27, 35, 0.4);
+  }
+}
+
+/* Liquid Blob Morphing Animation Keyframes */
+@keyframes floatBlob {
+  0% {
+    transform: translate(0px, 0px) scale(1) rotate(0deg);
+    border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+  }
+  50% {
+    transform: translate(15px, -20px) scale(1.08) rotate(90deg);
+    border-radius: 30% 60% 70% 40% / 50% 60% 30% 60%;
+  }
+  100% {
+    transform: translate(-10px, 10px) scale(0.95) rotate(180deg);
+    border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+  }
+}
+
+/* Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-gray-300 dark:bg-gray-700 rounded-full;
+}
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-red-400 dark:bg-red-600;
+}
+
+/* Print CSS setup for A4 Documents */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .printable-area, .printable-area * {
+    visibility: visible;
+  }
+  .printable-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    background: white !important;
+    color: black !important;
+    font-size: 12pt;
+  }
+  .no-print {
+    display: none !important;
+  }
+  @page {
+    size: A4;
+    margin: 12mm 15mm 12mm 15mm;
+  }
+}
