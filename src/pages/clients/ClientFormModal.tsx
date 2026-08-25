@@ -85,7 +85,7 @@ export const ClientFormModal: React.FC<ClientFormModalProps> = ({
       <form onSubmit={handleSubmit} className="space-y-4 text-xs">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-gray-700 dark:text-gray-300 font-bold mb-1 flex items-center space-x-1">
+            <label className="text-gray-700 dark:text-gray-300 font-bold mb-1 flex items-center space-x-1">
               <User className="w-3.5 h-3.5 text-[#E31B23]" />
               <span>Client Full Name *</span>
             </label>
@@ -100,7 +100,7 @@ export const ClientFormModal: React.FC<ClientFormModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-gray-700 dark:text-gray-300 font-bold mb-1 flex items-center space-x-1">
+            <label className="text-gray-700 dark:text-gray-300 font-bold mb-1 flex items-center space-x-1">
               <Building2 className="w-3.5 h-3.5 text-[#E31B23]" />
               <span>Company Name *</span>
             </label>
@@ -115,7 +115,7 @@ export const ClientFormModal: React.FC<ClientFormModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-gray-700 dark:text-gray-300 font-bold mb-1 flex items-center space-x-1">
+            <label className="text-gray-700 dark:text-gray-300 font-bold mb-1 flex items-center space-x-1">
               <Phone className="w-3.5 h-3.5 text-gray-400" />
               <span>Mobile Number *</span>
             </label>
@@ -130,7 +130,7 @@ export const ClientFormModal: React.FC<ClientFormModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-gray-700 dark:text-gray-300 font-bold mb-1 flex items-center space-x-1">
+            <label className="text-gray-700 dark:text-gray-300 font-bold mb-1 flex items-center space-x-1">
               <Mail className="w-3.5 h-3.5 text-gray-400" />
               <span>Email Address *</span>
             </label>
@@ -146,7 +146,7 @@ export const ClientFormModal: React.FC<ClientFormModalProps> = ({
         </div>
 
         <div>
-          <label className="block text-gray-700 dark:text-gray-300 font-bold mb-1 flex items-center space-x-1">
+          <label className="text-gray-700 dark:text-gray-300 font-bold mb-1 flex items-center space-x-1">
             <MapPin className="w-3.5 h-3.5 text-gray-400" />
             <span>Street Address *</span>
           </label>

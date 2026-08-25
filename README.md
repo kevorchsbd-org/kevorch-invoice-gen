@@ -1,32 +1,101 @@
-# React + TypeScript + Vite
+# Invoice Project
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+An enterprise-grade Invoice Management Application built with **React**, **TypeScript**, **Vite**, **Firebase**, and **Supabase**.
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## ⚡ Overview & Hybrid Cloud Architecture
 
-## React Compiler
+This application utilizes a dual-cloud strategy for maximum performance, security, and scalability:
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- **Firebase Authentication**: Single primary authentication system for all users.
+- **Firebase Cloud Firestore**: Primary database for business records (Clients, Quotations, Invoices, Payments, Settings).
+- **Firebase Cloud Functions**: Trusted backend layer for secure storage operations, email dispatch, and secret management.
+- **Supabase Storage**: Private, secure document and file storage in the `documents` bucket.
 
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```
+React Frontend (Vite)
+    │
+    ├── (1) Firebase Auth ID Token Validation
+    ▼
+Firebase Cloud Function (HTTPS Callable)
+    │
+    ├── (2) Validates context.auth + payload size/MIME type
+    ├── (3) Executes with SUPABASE_SERVICE_ROLE_KEY (Server Secret)
+    ▼
+Supabase Private Bucket ("documents")
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+---
+
+## 🔒 Supabase Storage Backend-Mediated Security Model
+
+- **Bucket Name**: `documents`
+- **Visibility**: `private` (`public = false`)
+- **File Size Limit**: `50 MB` (52,428,800 bytes)
+- **Allowed MIME Types**: `image/png`, `image/jpeg`, `image/jpg`, `image/webp`, `application/pdf`
+- **Access Control**: All privileged storage operations (`uploadStorageFile`, `deleteStorageFile`, `getSignedStorageUrl`) are mediated via Firebase HTTPS Callable Functions.
+- **Zero Browser Secret Exposure**: The Supabase Service-Role Key (`SUPABASE_SERVICE_ROLE_KEY`) is stored strictly in server-side configuration / Secret Manager and is **NEVER** exposed to the React frontend, `VITE_*` environment variables, build output (`dist`), or browser console.
+
+---
+
+## ⚙️ Environment Configuration
+
+### Frontend `.env` (Public Configuration Only)
+```env
+# Firebase Configuration
+VITE_FIREBASE_API_KEY=your_firebase_api_key
+VITE_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=your_firebase_project_id
+VITE_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
+VITE_FIREBASE_MESSAGING_SENDER_ID=your_messaging_sender_id
+VITE_FIREBASE_APP_ID=your_firebase_app_id
+
+# Supabase Storage Configuration (Public URL & Publishable Key only)
+VITE_SUPABASE_URL=https://your-supabase-project.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=your_supabase_publishable_key
+```
+
+### Firebase Cloud Functions Secrets Configuration
+Store server secrets securely using Firebase Secret Manager:
+```bash
+firebase functions:secrets:set SUPABASE_URL
+firebase functions:secrets:set SUPABASE_SERVICE_ROLE_KEY
+```
+
+---
+
+## 🛠️ Backend Cloud Functions & Client API
+
+### Firebase Callable Cloud Functions ([`functions/src/index.ts`](file:///d:/company%20projects/kevorch%20documents/invoice%20projcet/functions/src/index.ts))
+- `uploadStorageFile`: Validates Firebase user token, verifies file size (<50MB) and MIME type, and uploads to `documents` bucket.
+- `deleteStorageFile`: Validates Firebase user token and deletes target file from `documents` bucket.
+- `getSignedStorageUrl`: Validates Firebase user token and returns a 1-hour signed URL for file access.
+
+### Client Helper Module ([`src/lib/supabase.ts`](file:///d:/company%20projects/kevorch%20documents/invoice%20projcet/src/lib/supabase.ts))
+- `uploadDocumentFile(path, fileOrBase64, fileType)`: Converts browser File/Base64 and calls `uploadStorageFile`.
+- `deleteDocumentFile(filePath)`: Calls `deleteStorageFile`.
+- `getFileAccessUrl(filePath, expiresInSeconds)`: Calls `getSignedStorageUrl` for secure temporary viewing URLs.
+
+---
+
+## 🚀 Build & Verification Commands
+
+1. **Build Backend Functions**:
+   ```bash
+   cd functions
+   npm install
+   npm run build
+   ```
+
+2. **Frontend Type Check & Production Build**:
+   ```bash
+   npx tsc --noEmit
+   npm run build
+   ```
+
+3. **Deploy Functions & Hosting**:
+   ```bash
+   firebase deploy --only functions
+   firebase deploy --only hosting
+   ```
