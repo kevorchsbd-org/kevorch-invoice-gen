@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useData } from '../../context/DataContext';
-import { Invoice } from '../../types';
+import { Invoice, ServiceItem } from '../../types';
+import { ItemTableBuilder } from '../../components/common/ItemTableBuilder';
 import { ArrowLeft, Save, Scale, AlertCircle } from 'lucide-react';
 
 export const BalanceInvoiceForm: React.FC = () => {
@@ -26,6 +27,16 @@ export const BalanceInvoiceForm: React.FC = () => {
     invoices.find(i => i.id === selectedInvoiceId) || eligibleInvoices[0] || null
   );
 
+  // Editable Service Items State
+  // Priority: 1. Existing Balance Invoice items (edit mode), 2. Selected Parent Invoice items (create mode)
+  const [items, setItems] = useState<ServiceItem[]>(() => {
+    if (isEditing && existingBalanceInv && existingBalanceInv.items && existingBalanceInv.items.length > 0) {
+      return existingBalanceInv.items;
+    }
+    const initInv = invoices.find(i => i.id === selectedInvoiceId) || eligibleInvoices[0];
+    return initInv && initInv.items ? initInv.items : [];
+  });
+
   const [date, setDate] = useState<string>(
     existingBalanceInv ? existingBalanceInv.date : new Date().toISOString().split('T')[0]
   );
@@ -42,16 +53,20 @@ export const BalanceInvoiceForm: React.FC = () => {
     existingBalanceInv ? existingBalanceInv.termsAndConditions : settings.invoice.defaultTermsAndConditions
   );
 
-  // Auto-calculate balance details when selected original invoice changes
+  // Auto-calculate balance details and reinitialize items ONLY when selected parent invoice explicitly changes in CREATE mode
   useEffect(() => {
     const inv = invoices.find(i => i.id === selectedInvoiceId);
     if (inv) {
       setSelectedInvoice(inv);
       if (!isEditing) {
+        setItems(inv.items || []);
         setNotes(`Balance Invoice for remaining amount on Invoice ${inv.invoiceNumber}. Total: ₹${inv.totalAmount.toLocaleString('en-IN')}, Paid: ₹${inv.paidAmount.toLocaleString('en-IN')}, Net Balance Due: ₹${inv.balanceAmount.toLocaleString('en-IN')}`);
       }
     }
-  }, [selectedInvoiceId, invoices, isEditing]);
+  }, [selectedInvoiceId, isEditing]);
+
+  const sanitizeDescription = (description = '') =>
+    description.split('\n').map(point => point.trim()).filter(Boolean).join('\n');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,6 +77,11 @@ export const BalanceInvoiceForm: React.FC = () => {
 
     const netBalanceDue = Math.max(0, selectedInvoice.totalAmount - selectedInvoice.paidAmount);
 
+    const sanitizedItems = items.map(item => ({
+      ...item,
+      description: sanitizeDescription(item.description)
+    }));
+
     try {
       if (isEditing && id) {
         await updateBalanceInvoice(id, {
@@ -71,7 +91,7 @@ export const BalanceInvoiceForm: React.FC = () => {
           dueDate,
           clientId: selectedInvoice.clientId,
           client: selectedInvoice.client,
-          items: selectedInvoice.items,
+          items: sanitizedItems,
           originalInvoiceAmount: selectedInvoice.totalAmount,
           amountAlreadyPaid: selectedInvoice.paidAmount,
           balanceAmountDue: netBalanceDue,
@@ -88,7 +108,7 @@ export const BalanceInvoiceForm: React.FC = () => {
           paymentTerms: selectedInvoice.paymentTerms || settings.invoice.defaultPaymentTerms,
           clientId: selectedInvoice.clientId,
           client: selectedInvoice.client,
-          items: selectedInvoice.items,
+          items: sanitizedItems,
           originalInvoiceAmount: selectedInvoice.totalAmount,
           amountAlreadyPaid: selectedInvoice.paidAmount,
           balanceAmountDue: netBalanceDue,
@@ -210,6 +230,11 @@ export const BalanceInvoiceForm: React.FC = () => {
           </div>
         </div>
 
+        {/* Repeatable Service Items with Multi-Point Description Support */}
+        <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-2xl p-6 shadow-xs">
+          <ItemTableBuilder items={items} onChange={setItems} enableDescriptionPoints={true} />
+        </div>
+
         {/* Notes & Terms */}
         <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-2xl p-6 shadow-xs grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
@@ -258,3 +283,4 @@ export const BalanceInvoiceForm: React.FC = () => {
     </div>
   );
 };
+

@@ -57,12 +57,20 @@ export const InvoiceForm: React.FC = () => {
     if (found) setSelectedClient(found);
   }, [selectedClientId, clients]);
 
+  const sanitizeDescription = (description = '') =>
+    description.split('\n').map(point => point.trim()).filter(Boolean).join('\n');
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedClient) {
       alert('Please select a valid client profile.');
       return;
     }
+
+    const sanitizedItems = items.map(item => ({
+      ...item,
+      description: sanitizeDescription(item.description)
+    }));
 
     try {
       if (isEditing && id) {
@@ -74,7 +82,7 @@ export const InvoiceForm: React.FC = () => {
           paymentTerms,
           notes,
           termsAndConditions,
-          items,
+          items: sanitizedItems,
           clientLogoUrl: selectedClient.logoUrl
         });
       } else {
@@ -84,7 +92,7 @@ export const InvoiceForm: React.FC = () => {
           paymentTerms,
           clientId: selectedClient.id,
           client: selectedClient,
-          items,
+          items: sanitizedItems,
           fromDetails: settings.company,
           notes,
           termsAndConditions,
@@ -202,7 +210,7 @@ export const InvoiceForm: React.FC = () => {
         </div>
 
         {/* Repeatable Service Items */}
-        <ItemTableBuilder items={items} onChange={setItems} />
+        <ItemTableBuilder items={items} onChange={setItems} enableDescriptionPoints={true} />
 
         {/* Notes & Terms */}
         <div className="neu-card p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
