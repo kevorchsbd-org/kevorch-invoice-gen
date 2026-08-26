@@ -28,6 +28,72 @@ Supabase Private Bucket ("documents")
 
 ---
 
+## 💳 Payment & Balance Management Workflow
+
+The application implements an automated, real-time financial tracking workflow that connects **Quotations**, **Invoices**, **Client Payments**, **Balance Invoices**, and **Dashboard Analytics**.
+
+```
+[Quotation Created]
+       │ (Convert to Invoice)
+       ▼
+[Invoice Created] ──► Total: ₹50,000 | Paid: ₹0 | Balance: ₹50,000 | Status: UNPAID
+       │
+       ├──► [Client Pays ₹20,000] (Record Payment)
+       │          │
+       │          ▼
+       │    Invoice Updated ──► Total: ₹50,000 | Paid: ₹20,000 | Balance: ₹30,000 | Status: PARTIALLY_PAID
+       │          │
+       │          ├──► [Generate Balance Invoice] ──► Bills remaining ₹30,000 due
+       │          │
+       │          └──► [Client Pays ₹30,000] (Record Final Payment)
+       │                     │
+       │                     ▼
+       └────────► Invoice Updated ──► Total: ₹50,000 | Paid: ₹50,000 | Balance: ₹0 | Status: FULLY_PAID
+```
+
+### Detailed Lifecycle Stages:
+
+1. **Quotation Stage (`Quotations`)**:
+   - Create a proposal with multi-point deliverables (`\n` newline bullets) and projected total amount (`totalAmount`).
+   - Printable PDF preview with left/right hierarchy and brand red accent header.
+
+2. **Invoice Generation Stage (`Invoices`)**:
+   - Convert Quotation or create an Invoice directly.
+   - Initial Invoice state:
+     - `totalAmount`: Gross value of project items.
+     - `paidAmount`: `0`
+     - `balanceAmount`: `totalAmount`
+     - `paymentStatus`: `'unpaid'`
+
+3. **Payment Receipt Stage (`addPayment`)**:
+   - Record payments via Cash, UPI, Bank Transfer (NEFT/RTGS/IMPS), Card, or Other.
+   - Real-time automatic recalculation across the parent Invoice:
+     - `paidAmount` = `sum(all payments linked to this invoice)`
+     - `balanceAmount` = `max(0, totalAmount - paidAmount)`
+     - `paymentStatus`:
+       - `paidAmount === 0` $\rightarrow$ `'unpaid'`
+       - `0 < paidAmount < totalAmount` $\rightarrow$ `'partially_paid'`
+       - `paidAmount >= totalAmount` $\rightarrow$ `'fully_paid'` (triggers confetti 🎉)
+
+4. **Balance Invoice Stage (`createBalanceInvoiceFromInvoice`)**:
+   - When an invoice is in `'partially_paid'` state (`balanceAmount > 0`), click **"Bal Inv"** / **Create Balance Invoice**.
+   - Generates a dedicated **Balance Invoice** document explicitly itemizing:
+     - `originalInvoiceNumber`
+     - `originalTotalAmount`
+     - `totalPaidSoFar`
+     - `balanceAmountDue`
+
+5. **Payment Deletion / Recalculation**:
+   - Deleting or editing a payment entry triggers an automatic recalculation across `paidAmount`, `balanceAmount`, `paymentStatus`, and client metrics.
+
+6. **Dashboard & Financial KPI Analytics**:
+   - **Total Gross Invoice Value**: Sum of `totalAmount` across all invoices.
+   - **Amount Received**: Sum of all recorded client payment receipts (symbolized with `IndianRupee` ₹).
+   - **Balance Outstanding**: `Total Gross Invoice Value - Amount Received`.
+   - **Pending Invoices**: Count of all unpaid or partially paid invoices.
+
+---
+
 ## 🔒 Supabase Storage Backend-Mediated Security Model
 
 - **Bucket Name**: `documents`

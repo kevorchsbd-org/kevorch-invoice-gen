@@ -6,7 +6,7 @@ import { ClientFormModal } from './ClientFormModal';
 import { DocumentPreviewModal } from '../../components/documents/DocumentPreviewModal';
 import { Quotation, Invoice, BalanceInvoice } from '../../types';
 import {
-  Building2, Phone, Mail, MapPin, Plus, FileText, CreditCard, DollarSign,
+  Building2, Phone, Mail, MapPin, Plus, FileText, CreditCard, IndianRupee,
   Scale, Calendar, Eye, ArrowLeft, History, FolderKanban
 } from 'lucide-react';
 
@@ -154,7 +154,7 @@ export const ClientWorkspace: React.FC = () => {
         {[
           { id: 'overview', label: 'Overview', icon: FolderKanban },
           { id: 'documents', label: `Documents (${clientQuotations.length + clientInvoices.length + clientBalanceInvoices.length})`, icon: FileText },
-          { id: 'payments', label: `Payments (${clientPayments.length})`, icon: DollarSign },
+          { id: 'payments', label: `Payments (${clientPayments.length})`, icon: IndianRupee },
           { id: 'files', label: `Files (${clientFiles.length})`, icon: CreditCard },
           { id: 'activity', label: `Activity Timeline (${clientActivity.length})`, icon: History },
         ].map((tab) => {

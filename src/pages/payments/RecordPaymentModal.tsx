@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Invoice, PaymentMethod } from '../../types';
 import { useData } from '../../context/DataContext';
 import { Modal } from '../../components/common/Modal';
-import { DollarSign, Save, AlertCircle } from 'lucide-react';
+import { IndianRupee, Save, AlertCircle } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 interface RecordPaymentModalProps {
@@ -207,7 +207,7 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
             type="submit"
             className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold flex items-center space-x-2 shadow-md transition"
           >
-            <DollarSign className="w-4 h-4" />
+            <IndianRupee className="w-4 h-4" />
             <span>Record Payment</span>
           </button>
         </div>

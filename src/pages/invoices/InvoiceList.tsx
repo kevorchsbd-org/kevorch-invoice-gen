@@ -7,7 +7,7 @@ import { DocumentPreviewModal } from '../../components/documents/DocumentPreview
 import { SendEmailModal } from '../../components/documents/SendEmailModal';
 import { RecordPaymentModal } from '../payments/RecordPaymentModal';
 import {
-  CreditCard, Plus, Search, Eye, Edit, Trash2, Mail, Scale, DollarSign, CheckCircle2
+  CreditCard, Plus, Search, Eye, Edit, Trash2, Mail, Scale, IndianRupee, CheckCircle2
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -170,7 +170,7 @@ export const InvoiceList: React.FC = () => {
                           className="p-1.5 rounded-lg text-emerald-700 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 font-bold flex items-center space-x-1"
                           title="Record Payment"
                         >
-                          <DollarSign className="w-3.5 h-3.5" />
+                          <IndianRupee className="w-3.5 h-3.5" />
                           <span className="text-[10px] hidden xl:inline">Pay</span>
                         </button>
                       )}

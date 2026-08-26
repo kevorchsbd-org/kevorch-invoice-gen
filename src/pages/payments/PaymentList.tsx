@@ -3,9 +3,9 @@ import { useData } from '../../context/DataContext';
 import { RecordPaymentModal } from './RecordPaymentModal';
 import { useSearchParams } from 'react-router-dom';
 import {
-  DollarSign, Plus, Search, Trash2, Calendar, FileText, ArrowUpRight
+  IndianRupee, Plus, Search, Trash2, Calendar, FileText, ArrowUpRight
 } from 'lucide-react';
-
+ 
 export const PaymentList: React.FC = () => {
   const { payments, deletePayment } = useData();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -65,7 +65,7 @@ export const PaymentList: React.FC = () => {
           <h2 className="text-2xl sm:text-3xl font-black mt-0.5">₹{totalCollected.toLocaleString('en-IN')}</h2>
         </div>
         <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center">
-          <DollarSign className="w-6 h-6 text-white" />
+          <IndianRupee className="w-6 h-6 text-white" />
         </div>
       </div>
 
@@ -136,7 +136,7 @@ export const PaymentList: React.FC = () => {
 
         {filteredPayments.length === 0 && (
           <div className="p-12 text-center space-y-3">
-            <DollarSign className="w-12 h-12 text-gray-300 mx-auto" />
+            <IndianRupee className="w-12 h-12 text-gray-300 mx-auto" />
             <h3 className="text-base font-bold text-gray-800 dark:text-gray-200">No Payments Recorded</h3>
             <p className="text-xs text-gray-400">Click "Record New Payment" to log client receipts.</p>
           </div>

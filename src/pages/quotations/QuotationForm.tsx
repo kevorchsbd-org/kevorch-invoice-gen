@@ -52,11 +52,14 @@ export const QuotationForm: React.FC = () => {
         ]
   );
 
+  const [clientLogoFailed, setClientLogoFailed] = useState<boolean>(false);
+
   // Auto-populate saved client details when client selection changes
   useEffect(() => {
     const found = clients.find(c => c.id === selectedClientId);
     if (found) {
       setSelectedClient(found);
+      setClientLogoFailed(false);
     }
   }, [selectedClientId, clients]);
 
@@ -123,13 +126,13 @@ export const QuotationForm: React.FC = () => {
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Client Selection Card with Auto-Population Notice */}
-        <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-2xl p-6 shadow-xs space-y-4">
-          <div className="flex items-center justify-between border-b border-gray-100 dark:border-[#2A2A2A] pb-3">
+        <div className="neu-card p-6 space-y-4">
+          <div className="flex items-center justify-between border-b border-gray-200/80 dark:border-[#2C2C34] pb-3">
             <div className="flex items-center space-x-2">
               <UserCheck className="w-5 h-5 text-[#E31B23]" />
               <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100">Client Information</h2>
             </div>
-            <span className="text-[10px] bg-red-50 text-[#E31B23] px-2.5 py-1 rounded-full font-bold">
+            <span className="text-[10px] bg-red-50 dark:bg-red-950/40 text-[#E31B23] px-2.5 py-1 rounded-full font-bold border border-red-200/50 dark:border-red-900/50">
               Auto-Populates Client Dues & Address
             </span>
           </div>
@@ -142,7 +145,7 @@ export const QuotationForm: React.FC = () => {
               <select
                 value={selectedClientId}
                 onChange={(e) => setSelectedClientId(e.target.value)}
-                className="w-full px-3 py-2 text-xs font-semibold bg-gray-50 dark:bg-[#252525] border border-gray-200 dark:border-[#333] rounded-xl focus:ring-1 focus:ring-[#E31B23] focus:border-[#E31B23]"
+                className="neu-select w-full px-3 py-2 text-xs font-semibold"
               >
                 {clients.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -154,17 +157,29 @@ export const QuotationForm: React.FC = () => {
 
             {/* Readonly Auto-populated summary card */}
             {selectedClient && (
-              <div className="bg-gray-50 dark:bg-[#222] p-3 rounded-xl border border-gray-100 dark:border-[#333] text-xs space-y-1">
-                <p className="font-bold text-gray-900 dark:text-gray-100">{selectedClient.name} ({selectedClient.companyName})</p>
-                <p className="text-gray-500 text-[11px]">{selectedClient.address}, {selectedClient.city}, {selectedClient.state} - {selectedClient.pincode}</p>
-                <p className="text-gray-500 text-[11px]">Phone: {selectedClient.mobile} | Email: {selectedClient.email}</p>
+              <div className="neu-panel p-3.5 text-xs flex items-center justify-between gap-4">
+                <div className="space-y-1">
+                  <p className="font-bold text-gray-900 dark:text-gray-100">{selectedClient.name} ({selectedClient.companyName})</p>
+                  <p className="text-gray-500 text-[11px]">{selectedClient.address}, {selectedClient.city}, {selectedClient.state} - {selectedClient.pincode}</p>
+                  <p className="text-gray-500 text-[11px]">Phone: {selectedClient.mobile} | Email: {selectedClient.email}</p>
+                </div>
+                {selectedClient.logoUrl && !clientLogoFailed && (
+                  <div className="shrink-0">
+                    <img
+                      src={selectedClient.logoUrl}
+                      alt={`${selectedClient.companyName} logo`}
+                      className="max-h-12 max-w-[120px] object-contain rounded-lg border border-gray-200 dark:border-[#333] bg-white p-1"
+                      onError={() => setClientLogoFailed(true)}
+                    />
+                  </div>
+                )}
               </div>
             )}
           </div>
         </div>
 
         {/* Dates & Terms Card */}
-        <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-2xl p-6 shadow-xs grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="neu-card p-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
             <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
               Quotation Date *
@@ -174,7 +189,7 @@ export const QuotationForm: React.FC = () => {
               required
               value={quotationDate}
               onChange={(e) => setQuotationDate(e.target.value)}
-              className="w-full px-3 py-2 text-xs bg-gray-50 dark:bg-[#252525] border border-gray-200 dark:border-[#333] rounded-xl focus:ring-1 focus:ring-[#E31B23]"
+              className="neu-input w-full px-3 py-2 text-xs"
             />
           </div>
 
@@ -187,7 +202,7 @@ export const QuotationForm: React.FC = () => {
               required
               value={validUntil}
               onChange={(e) => setValidUntil(e.target.value)}
-              className="w-full px-3 py-2 text-xs bg-gray-50 dark:bg-[#252525] border border-gray-200 dark:border-[#333] rounded-xl focus:ring-1 focus:ring-[#E31B23]"
+              className="neu-input w-full px-3 py-2 text-xs"
             />
           </div>
 
@@ -200,16 +215,16 @@ export const QuotationForm: React.FC = () => {
               placeholder="e.g. 50% Advance on order"
               value={paymentTerms}
               onChange={(e) => setPaymentTerms(e.target.value)}
-              className="w-full px-3 py-2 text-xs bg-gray-50 dark:bg-[#252525] border border-gray-200 dark:border-[#333] rounded-xl focus:ring-1 focus:ring-[#E31B23]"
+              className="neu-input w-full px-3 py-2 text-xs"
             />
           </div>
         </div>
 
         {/* Repeatable Service Items Table */}
-        <ItemTableBuilder items={items} onChange={setItems} />
+        <ItemTableBuilder items={items} onChange={setItems} enableDescriptionPoints={true} />
 
         {/* Notes & Terms & Conditions */}
-        <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-2xl p-6 shadow-xs grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="neu-card p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
               Notes / Remarks
@@ -218,7 +233,7 @@ export const QuotationForm: React.FC = () => {
               rows={4}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              className="w-full px-3 py-2 text-xs bg-gray-50 dark:bg-[#252525] border border-gray-200 dark:border-[#333] rounded-xl focus:ring-1 focus:ring-[#E31B23]"
+              className="neu-textarea w-full px-3 py-2 text-xs"
             />
           </div>
 
@@ -230,7 +245,7 @@ export const QuotationForm: React.FC = () => {
               rows={4}
               value={termsAndConditions}
               onChange={(e) => setTermsAndConditions(e.target.value)}
-              className="w-full px-3 py-2 text-xs bg-gray-50 dark:bg-[#252525] border border-gray-200 dark:border-[#333] rounded-xl focus:ring-1 focus:ring-[#E31B23]"
+              className="neu-textarea w-full px-3 py-2 text-xs"
             />
           </div>
         </div>
@@ -240,13 +255,13 @@ export const QuotationForm: React.FC = () => {
           <button
             type="button"
             onClick={() => navigate('/quotations')}
-            className="px-5 py-2.5 bg-gray-100 dark:bg-[#252525] text-gray-700 dark:text-gray-300 text-xs font-bold rounded-xl hover:bg-gray-200"
+            className="neu-btn-secondary px-5 py-2.5 text-xs"
           >
             Cancel
           </button>
           <button
             type="submit"
-            className="px-6 py-2.5 bg-[#E31B23] hover:bg-red-700 text-white text-xs font-bold rounded-xl shadow-md flex items-center space-x-2 transition"
+            className="neu-btn-primary px-6 py-2.5 text-xs flex items-center space-x-2"
           >
             <Save className="w-4 h-4" />
             <span>{isEditing ? 'Save Quotation Changes' : 'Generate & Save Quotation'}</span>

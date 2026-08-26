@@ -1,8 +1,8 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import {
-  LayoutDashboard, Users, FileText, CreditCard, Scale, DollarSign,
-  FolderKanban, Image as ImageIcon, Settings as SettingsIcon, Sparkles
+  LayoutDashboard, Users, FileText, CreditCard, Scale, IndianRupee,
+  FolderKanban, Image as ImageIcon, Settings as SettingsIcon
 } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 import { motion } from 'framer-motion';
@@ -10,15 +10,13 @@ import { motion } from 'framer-motion';
 export const Sidebar: React.FC = () => {
   const { clients, quotations, invoices, balanceInvoices, payments } = useData();
 
-  const pendingPaymentsCount = invoices.filter(i => i.paymentStatus !== 'fully_paid').length;
-
   const navItems = [
     { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
     { label: 'Clients', path: '/clients', icon: Users, badge: clients.length },
     { label: 'Quotations', path: '/quotations', icon: FileText, badge: quotations.length },
     { label: 'Invoices', path: '/invoices', icon: CreditCard, badge: invoices.length },
     { label: 'Balance Invoices', path: '/balance-invoices', icon: Scale, badge: balanceInvoices.length },
-    { label: 'Payments', path: '/payments', icon: DollarSign, badge: payments.length, badgeColor: 'bg-emerald-500 text-white' },
+    { label: 'Payments', path: '/payments', icon: IndianRupee, badge: payments.length, badgeColor: 'bg-emerald-500 text-white' },
     { label: 'Document Vault', path: '/documents', icon: FolderKanban },
     { label: 'File Library', path: '/files', icon: ImageIcon },
     { label: 'Settings', path: '/settings', icon: SettingsIcon },
@@ -70,21 +68,6 @@ export const Sidebar: React.FC = () => {
             </NavLink>
           );
         })}
-      </div>
-
-      {/* Liquid Glass Card at bottom of sidebar */}
-      <div className="p-4 m-3 rounded-2xl glass-card border border-red-500/20 relative overflow-hidden group">
-        <div className="absolute -right-6 -bottom-6 w-24 h-24 bg-red-500/10 rounded-full blur-xl pointer-events-none group-hover:scale-150 transition duration-500"></div>
-        <div className="flex items-center justify-between mb-1 relative z-10">
-          <span className="text-xs font-black text-gray-800 dark:text-gray-200 flex items-center space-x-1">
-            <Sparkles className="w-3.5 h-3.5 text-[#E31B23]" />
-            <span>Pending Balance</span>
-          </span>
-          <span className="w-2.5 h-2.5 rounded-full bg-[#E31B23] animate-ping"></span>
-        </div>
-        <p className="text-[11px] text-gray-600 dark:text-gray-400 relative z-10 leading-snug">
-          {pendingPaymentsCount} invoice{pendingPaymentsCount === 1 ? '' : 's'} awaiting remaining payment balance.
-        </p>
       </div>
     </aside>
   );

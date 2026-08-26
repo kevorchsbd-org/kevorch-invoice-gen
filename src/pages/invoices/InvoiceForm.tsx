@@ -120,13 +120,13 @@ export const InvoiceForm: React.FC = () => {
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Client Selection Card */}
-        <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-2xl p-6 shadow-xs space-y-4">
-          <div className="flex items-center justify-between border-b border-gray-100 dark:border-[#2A2A2A] pb-3">
+        <div className="neu-card p-6 space-y-4">
+          <div className="flex items-center justify-between border-b border-gray-200/80 dark:border-[#2C2C34] pb-3">
             <div className="flex items-center space-x-2">
               <UserCheck className="w-5 h-5 text-[#E31B23]" />
               <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100">Invoice Recipient</h2>
             </div>
-            <span className="text-[10px] bg-red-50 text-[#E31B23] px-2.5 py-1 rounded-full font-bold">
+            <span className="text-[10px] bg-red-50 dark:bg-red-950/40 text-[#E31B23] px-2.5 py-1 rounded-full font-bold border border-red-200/50 dark:border-red-900/50">
               Auto-Populates Client Info & Logos
             </span>
           </div>
@@ -139,7 +139,7 @@ export const InvoiceForm: React.FC = () => {
               <select
                 value={selectedClientId}
                 onChange={(e) => setSelectedClientId(e.target.value)}
-                className="w-full px-3 py-2 text-xs font-semibold bg-gray-50 dark:bg-[#252525] border border-gray-200 dark:border-[#333] rounded-xl focus:ring-1 focus:ring-[#E31B23]"
+                className="neu-select w-full px-3 py-2 text-xs font-semibold"
               >
                 {clients.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -150,7 +150,7 @@ export const InvoiceForm: React.FC = () => {
             </div>
 
             {selectedClient && (
-              <div className="bg-gray-50 dark:bg-[#222] p-3 rounded-xl border border-gray-100 dark:border-[#333] text-xs space-y-1">
+              <div className="neu-panel p-3.5 text-xs space-y-1">
                 <p className="font-bold text-gray-900 dark:text-gray-100">{selectedClient.name} ({selectedClient.companyName})</p>
                 <p className="text-gray-500 text-[11px]">{selectedClient.address}, {selectedClient.city}, {selectedClient.state} - {selectedClient.pincode}</p>
                 <p className="text-gray-500 text-[11px]">Phone: {selectedClient.mobile} | Email: {selectedClient.email}</p>
@@ -160,7 +160,7 @@ export const InvoiceForm: React.FC = () => {
         </div>
 
         {/* Dates & Terms Card */}
-        <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-2xl p-6 shadow-xs grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="neu-card p-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
             <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
               Invoice Date *
@@ -170,7 +170,7 @@ export const InvoiceForm: React.FC = () => {
               required
               value={invoiceDate}
               onChange={(e) => setInvoiceDate(e.target.value)}
-              className="w-full px-3 py-2 text-xs bg-gray-50 dark:bg-[#252525] border border-gray-200 dark:border-[#333] rounded-xl focus:ring-1 focus:ring-[#E31B23]"
+              className="neu-input w-full px-3 py-2 text-xs"
             />
           </div>
 
@@ -183,7 +183,7 @@ export const InvoiceForm: React.FC = () => {
               required
               value={dueDate}
               onChange={(e) => setDueDate(e.target.value)}
-              className="w-full px-3 py-2 text-xs bg-gray-50 dark:bg-[#252525] border border-gray-200 dark:border-[#333] rounded-xl focus:ring-1 focus:ring-[#E31B23]"
+              className="neu-input w-full px-3 py-2 text-xs"
             />
           </div>
 
@@ -196,7 +196,7 @@ export const InvoiceForm: React.FC = () => {
               placeholder="e.g. 50% Advance received"
               value={paymentTerms}
               onChange={(e) => setPaymentTerms(e.target.value)}
-              className="w-full px-3 py-2 text-xs bg-gray-50 dark:bg-[#252525] border border-gray-200 dark:border-[#333] rounded-xl focus:ring-1 focus:ring-[#E31B23]"
+              className="neu-input w-full px-3 py-2 text-xs"
             />
           </div>
         </div>
@@ -205,7 +205,7 @@ export const InvoiceForm: React.FC = () => {
         <ItemTableBuilder items={items} onChange={setItems} />
 
         {/* Notes & Terms */}
-        <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-2xl p-6 shadow-xs grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="neu-card p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
               Payment Notes & Bank Details
@@ -214,7 +214,7 @@ export const InvoiceForm: React.FC = () => {
               rows={4}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              className="w-full px-3 py-2 text-xs bg-gray-50 dark:bg-[#252525] border border-gray-200 dark:border-[#333] rounded-xl focus:ring-1 focus:ring-[#E31B23]"
+              className="neu-textarea w-full px-3 py-2 text-xs"
             />
           </div>
 
@@ -226,7 +226,7 @@ export const InvoiceForm: React.FC = () => {
               rows={4}
               value={termsAndConditions}
               onChange={(e) => setTermsAndConditions(e.target.value)}
-              className="w-full px-3 py-2 text-xs bg-gray-50 dark:bg-[#252525] border border-gray-200 dark:border-[#333] rounded-xl focus:ring-1 focus:ring-[#E31B23]"
+              className="neu-textarea w-full px-3 py-2 text-xs"
             />
           </div>
         </div>
@@ -236,13 +236,13 @@ export const InvoiceForm: React.FC = () => {
           <button
             type="button"
             onClick={() => navigate('/invoices')}
-            className="px-5 py-2.5 bg-gray-100 dark:bg-[#252525] text-gray-700 dark:text-gray-300 text-xs font-bold rounded-xl hover:bg-gray-200"
+            className="neu-btn-secondary px-5 py-2.5 text-xs"
           >
             Cancel
           </button>
           <button
             type="submit"
-            className="px-6 py-2.5 bg-[#E31B23] hover:bg-red-700 text-white text-xs font-bold rounded-xl shadow-md flex items-center space-x-2 transition"
+            className="neu-btn-primary px-6 py-2.5 text-xs flex items-center space-x-2"
           >
             <Save className="w-4 h-4" />
             <span>{isEditing ? 'Save Invoice Changes' : 'Generate & Save Invoice'}</span>
