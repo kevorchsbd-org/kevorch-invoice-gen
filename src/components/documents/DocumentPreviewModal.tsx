@@ -5,7 +5,8 @@ import { InvoicePDF } from './InvoicePDF';
 import { BalanceInvoicePDF } from './BalanceInvoicePDF';
 import { SendEmailModal } from './SendEmailModal';
 import { Modal } from '../common/Modal';
-import { Printer, Download, Mail, CheckCircle2 } from 'lucide-react';
+import { Printer, Download, Mail, CheckCircle2, HardDriveDownload } from 'lucide-react';
+import { saveInvoicePdf, saveQuotationPdf } from '../../lib/indexedDb';
 // @ts-ignore
 import html2pdf from 'html2pdf.js';
 
@@ -50,19 +51,43 @@ export const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
       return;
     }
 
+    const filename = `${docNumber}_KEVORCH_SBD.pdf`;
+
     const opt = {
       margin: 0,
-      filename: `${docNumber}_KEVORCH_SBD.pdf`,
+      filename,
       image: { type: 'jpeg', quality: 0.98 },
       html2canvas: { scale: 2, useCORS: true, logging: false },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
 
-    (html2pdf() as any).set(opt).from(element).save().then(() => {
+    (html2pdf() as any).set(opt).from(element).outputPdf('blob').then(async (pdfBlob: Blob) => {
+      // 1. Save generated PDF locally into IndexedDB
+      try {
+        if (documentType === 'Invoice') {
+          await saveInvoicePdf(docItem.id, pdfBlob, filename);
+        } else if (documentType === 'Quotation') {
+          await saveQuotationPdf(docItem.id, pdfBlob, filename);
+        }
+      } catch (err) {
+        console.warn('Local IndexedDB PDF save notice:', err);
+      }
+
+      // 2. Trigger browser download
+      const downloadUrl = URL.createObjectURL(pdfBlob);
+      const a = window.document.createElement('a');
+      a.href = downloadUrl;
+      a.download = filename;
+      window.document.body.appendChild(a);
+      a.click();
+      window.document.body.removeChild(a);
+      URL.revokeObjectURL(downloadUrl);
+
       setDownloading(false);
-      setSuccessMessage('PDF Downloaded successfully!');
+      setSuccessMessage('PDF saved to local IndexedDB & downloaded successfully!');
       setTimeout(() => setSuccessMessage(null), 3000);
-    }).catch(() => {
+    }).catch((err: any) => {
+      console.error('PDF export error:', err);
       setDownloading(false);
     });
   };
@@ -76,6 +101,10 @@ export const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
             <div className="flex items-center space-x-2">
               <span className="text-xs font-bold text-gray-700 dark:text-gray-300">
                 Recipient: <span className="text-[#E31B23] font-bold">{docItem.client.email}</span>
+              </span>
+              <span className="px-2 py-0.5 text-[9px] bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 font-bold rounded-full flex items-center space-x-1">
+                <HardDriveDownload className="w-3 h-3" />
+                <span>IndexedDB Storage</span>
               </span>
             </div>
 
@@ -94,7 +123,7 @@ export const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
                 className="px-3 py-1.5 bg-white dark:bg-[#2A2A2A] text-gray-700 dark:text-gray-200 hover:bg-gray-100 text-xs font-bold rounded-lg border border-gray-200 dark:border-[#333] flex items-center space-x-1.5 transition"
               >
                 <Download className="w-3.5 h-3.5 text-[#E31B23]" />
-                <span>{downloading ? 'Exporting...' : 'Download PDF'}</span>
+                <span>{downloading ? 'Saving & Exporting...' : 'Download PDF'}</span>
               </button>
 
               <button

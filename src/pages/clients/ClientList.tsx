@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useData } from '../../context/DataContext';
 import { Client } from '../../types';
 import { ClientFormModal } from './ClientFormModal';
+import { ClientLogo } from '../../components/common/ClientLogo';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Search, Plus, ExternalLink, Edit, Trash2, Building2, Phone, Mail, MapPin } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -123,13 +124,7 @@ export const ClientList: React.FC = () => {
                 {/* Client Header */}
                 <div className="flex items-start justify-between">
                   <div className="flex items-center space-x-3">
-                    {client.logoUrl ? (
-                      <img src={client.logoUrl} alt={client.companyName} className="w-11 h-11 rounded-2xl object-contain border border-gray-200/50 dark:border-white/10 p-1 bg-white/60 dark:bg-black/20" />
-                    ) : (
-                      <div className="w-11 h-11 rounded-2xl bg-red-500/10 dark:bg-red-500/20 text-[#E31B23] font-black flex items-center justify-center text-lg border border-red-500/20">
-                        {client.name[0]}
-                      </div>
-                    )}
+                    <ClientLogo client={client} />
                     <div>
                       <h3 className="font-black text-sm text-gray-900 dark:text-gray-100 group-hover:text-[#E31B23] transition flex items-center space-x-1.5">
                         <span>{client.name}</span>

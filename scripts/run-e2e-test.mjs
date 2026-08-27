@@ -3,7 +3,6 @@ import path from 'path';
 import { initializeApp } from 'firebase/app';
 import { getFirestore, doc, setDoc, getDoc, deleteDoc } from 'firebase/firestore';
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInAnonymously } from 'firebase/auth';
-import { createClient } from '@supabase/supabase-js';
 
 // Read and parse .env file
 function loadEnvFile() {
@@ -30,15 +29,13 @@ function loadEnvFile() {
 const env = loadEnvFile();
 
 console.log("\n========================================================");
-console.log("🔥 KEVORCH SBD BILLING SYSTEM - SECURE E2E TEST RUNNER");
+console.log("🔥 KEVORCH SBD BILLING SYSTEM - FIREBASE E2E TEST RUNNER");
 console.log("========================================================\n");
 
 // Validate required environment variables
 const requiredKeys = [
   'VITE_FIREBASE_API_KEY',
-  'VITE_FIREBASE_PROJECT_ID',
-  'VITE_SUPABASE_URL',
-  'VITE_SUPABASE_PUBLISHABLE_KEY'
+  'VITE_FIREBASE_PROJECT_ID'
 ];
 
 const missingOrPlaceholder = [];
@@ -60,7 +57,7 @@ if (missingOrPlaceholder.length > 0) {
   for (const item of missingOrPlaceholder) {
     console.error(`  - ${item}`);
   }
-  console.error("\nStopping test. Please configure real production Firebase & Supabase API keys in .env.\n");
+  console.error("\nStopping test. Please configure real production Firebase API keys in .env.\n");
   process.exit(1);
 }
 
@@ -73,8 +70,7 @@ const firebaseConfig = {
   appId: env.VITE_FIREBASE_APP_ID || ''
 };
 
-console.log(`✅ Loaded Firebase Project: "${firebaseConfig.projectId}"`);
-console.log(`✅ Loaded Supabase Project: "${env.VITE_SUPABASE_URL}"\n`);
+console.log(`✅ Loaded Firebase Project: "${firebaseConfig.projectId}"\n`);
 
 const e2eEmail = env.E2E_TEST_EMAIL || process.env.E2E_TEST_EMAIL || "test.admin@kevorch-invoice-gen.com";
 const e2ePassword = env.E2E_TEST_PASSWORD || process.env.E2E_TEST_PASSWORD || "KevorchAdmin2026!";
@@ -85,11 +81,6 @@ let clientWriteRead = 'FAIL';
 let quotationWriteRead = 'FAIL';
 let invoiceWriteRead = 'FAIL';
 let paymentUpdate = 'FAIL';
-
-let supabaseConnection = 'FAIL';
-let fileUpload = 'FAIL';
-let fileVerification = 'FAIL';
-let fileCleanup = 'FAIL';
 
 const testId = `e2e_${Date.now()}`;
 
@@ -229,46 +220,8 @@ async function runTest() {
     }
   }
 
-  // Supabase Storage Tests
-  try {
-    const supabase = createClient(env.VITE_SUPABASE_URL, env.VITE_SUPABASE_PUBLISHABLE_KEY);
-    supabaseConnection = 'PASS';
-
-    const storagePath = `company/logo/e2e_test_${Date.now()}.png`;
-    const dummyContent = Buffer.from("KEVORCH SBD TEST LOGO CONTENT");
-
-    const { data: uploadData, error: uploadErr } = await supabase.storage
-      .from('documents')
-      .upload(storagePath, dummyContent, { contentType: 'image/png', upsert: true });
-
-    if (!uploadErr) {
-      fileUpload = 'PASS';
-
-      const { data: listData } = await supabase.storage
-        .from('documents')
-        .list('company/logo');
-
-      const found = listData?.some(f => storagePath.endsWith(f.name));
-      if (found) {
-        fileVerification = 'PASS';
-      }
-
-      const { error: removeErr } = await supabase.storage
-        .from('documents')
-        .remove([storagePath]);
-
-      if (!removeErr) {
-        fileCleanup = 'PASS';
-      }
-    } else {
-      console.error("Supabase Storage Error:", uploadErr.message);
-    }
-  } catch (err) {
-    console.error("Supabase Client Error:", err.message);
-  }
-
   console.log("\n========================================================");
-  console.log("FINAL E2E PERSISTENCE VERIFICATION REPORT");
+  console.log("FINAL FIREBASE PERSISTENCE VERIFICATION REPORT");
   console.log("========================================================\n");
   console.log(`Firebase Authentication: ${firebaseAuthStatus}`);
   console.log(`Firestore rules: ${firestoreRulesStatus}`);
@@ -276,11 +229,6 @@ async function runTest() {
   console.log(`Quotation write/read: ${quotationWriteRead}`);
   console.log(`Invoice write/read: ${invoiceWriteRead}`);
   console.log(`Payment update: ${paymentUpdate}\n`);
-  console.log("Supabase:");
-  console.log(`Storage connection: ${supabaseConnection}`);
-  console.log(`Upload: ${fileUpload}`);
-  console.log(`File verification: ${fileVerification}`);
-  console.log(`Cleanup: ${fileCleanup}\n`);
 }
 
 runTest();

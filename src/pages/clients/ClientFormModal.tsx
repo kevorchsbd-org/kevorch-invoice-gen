@@ -3,7 +3,7 @@ import { Client } from '../../types';
 import { useData } from '../../context/DataContext';
 import { Modal } from '../../components/common/Modal';
 import { Save, Building2, User, Phone, Mail, MapPin } from 'lucide-react';
-import { uploadDocumentFile } from '../../lib/supabase';
+import { saveClientAsset, getClientAsset, revokeObjectUrl } from '../../lib/indexedDb';
 
 interface ClientFormModalProps {
   isOpen: boolean;
@@ -31,43 +31,80 @@ export const ClientFormModal: React.FC<ClientFormModalProps> = ({
     notes: ''
   });
 
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
   useEffect(() => {
-    if (clientToEdit) {
-      setFormData({
-        name: clientToEdit.name || '',
-        companyName: clientToEdit.companyName || '',
-        mobile: clientToEdit.mobile || '',
-        email: clientToEdit.email || '',
-        address: clientToEdit.address || '',
-        city: clientToEdit.city || 'Coimbatore',
-        state: clientToEdit.state || 'Tamil Nadu',
-        pincode: clientToEdit.pincode || '641001',
-        logoUrl: clientToEdit.logoUrl || '',
-        notes: clientToEdit.notes || ''
-      });
-    } else {
-      setFormData({
-        name: '',
-        companyName: '',
-        mobile: '',
-        email: '',
-        address: '',
-        city: 'Coimbatore',
-        state: 'Tamil Nadu',
-        pincode: '641001',
-        logoUrl: '',
-        notes: ''
-      });
+    let localObjectUrl = '';
+
+    const initForm = async () => {
+      if (clientToEdit) {
+        let logoUrl = clientToEdit.logoUrl || '';
+        try {
+          const localAsset = await getClientAsset(clientToEdit.id);
+          if (localAsset?.url) {
+            localObjectUrl = localAsset.url;
+            logoUrl = localAsset.url;
+          }
+        } catch (e) {
+          console.warn('Client asset load error:', e);
+        }
+
+        setFormData({
+          name: clientToEdit.name || '',
+          companyName: clientToEdit.companyName || '',
+          mobile: clientToEdit.mobile || '',
+          email: clientToEdit.email || '',
+          address: clientToEdit.address || '',
+          city: clientToEdit.city || 'Coimbatore',
+          state: clientToEdit.state || 'Tamil Nadu',
+          pincode: clientToEdit.pincode || '641001',
+          logoUrl,
+          notes: clientToEdit.notes || ''
+        });
+      } else {
+        setFormData({
+          name: '',
+          companyName: '',
+          mobile: '',
+          email: '',
+          address: '',
+          city: 'Coimbatore',
+          state: 'Tamil Nadu',
+          pincode: '641001',
+          logoUrl: '',
+          notes: ''
+        });
+      }
+      setSelectedFile(null);
+    };
+
+    if (isOpen) {
+      initForm();
     }
+
+    return () => {
+      if (localObjectUrl) revokeObjectUrl(localObjectUrl);
+    };
   }, [clientToEdit, isOpen]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       if (clientToEdit) {
+        if (selectedFile) {
+          await saveClientAsset(clientToEdit.id, selectedFile, selectedFile.name);
+          formData.logoUrl = 'indexeddb';
+        }
         await updateClient(clientToEdit.id, formData);
       } else {
-        await addClient(formData);
+        if (selectedFile) {
+          formData.logoUrl = 'indexeddb';
+        }
+        const newClient = await addClient(formData);
+        if (selectedFile && newClient?.id) {
+          await saveClientAsset(newClient.id, selectedFile, selectedFile.name);
+          await updateClient(newClient.id, { logoUrl: 'indexeddb' });
+        }
       }
       onClose();
     } catch (err: any) {
@@ -194,20 +231,16 @@ export const ClientFormModal: React.FC<ClientFormModalProps> = ({
         </div>
 
         <div>
-          <label className="block text-gray-700 dark:text-gray-300 font-bold mb-1">Client Logo</label>
+          <label className="block text-gray-700 dark:text-gray-300 font-bold mb-1">Client Logo (Stored Locally in IndexedDB)</label>
           <div className="flex flex-col sm:flex-row items-center gap-2">
             <input
               type="file"
               accept="image/*"
-              onChange={async (e) => {
+              onChange={(e) => {
                 const file = e.target.files?.[0];
                 if (file) {
-                  try {
-                    const uploaded = await uploadDocumentFile(`clients/logo/${Date.now()}_${file.name}`, file, file.type);
-                    setFormData(prev => ({ ...prev, logoUrl: uploaded.url }));
-                  } catch (err: any) {
-                    alert('Logo upload failed: ' + err.message);
-                  }
+                  setSelectedFile(file);
+                  setFormData(prev => ({ ...prev, logoUrl: URL.createObjectURL(file) }));
                 }
               }}
               className="w-full px-3 py-1.5 text-xs bg-gray-50 dark:bg-[#252525] border border-gray-200 dark:border-[#333] rounded-lg"
@@ -220,6 +253,12 @@ export const ClientFormModal: React.FC<ClientFormModalProps> = ({
               className="w-full px-3 py-2 text-xs bg-gray-50 dark:bg-[#252525] border border-gray-200 dark:border-[#333] rounded-lg focus:ring-1 focus:ring-[#E31B23]"
             />
           </div>
+          {formData.logoUrl && (
+            <div className="mt-2 p-2 bg-gray-50 dark:bg-[#222] border border-gray-200 dark:border-[#333] rounded-xl flex items-center space-x-3 w-max">
+              <img src={formData.logoUrl} alt="Client Logo Preview" className="h-10 w-auto object-contain rounded" />
+              <span className="text-[10px] text-gray-400 font-semibold">Active Client Logo</span>
+            </div>
+          )}
         </div>
 
         <div>

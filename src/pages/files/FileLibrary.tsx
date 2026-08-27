@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { useData } from '../../context/DataContext';
 import { FileCategory } from '../../types';
 import { Modal } from '../../components/common/Modal';
-import { Image as ImageIcon, Upload, Trash2, Plus, ExternalLink, FileText } from 'lucide-react';
-import { uploadDocumentFile } from '../../lib/supabase';
+import { Image as ImageIcon, Upload, Trash2, Plus, ExternalLink, FileText, HardDriveDownload } from 'lucide-react';
+import { uploadDocumentFile } from '../../lib/storage';
 
 export const FileLibrary: React.FC = () => {
   const { files, addFile, deleteFile, clients } = useData();
@@ -112,6 +112,15 @@ export const FileLibrary: React.FC = () => {
         </button>
       </div>
 
+      {/* Local Storage Indicator Banner */}
+      <div className="p-3 bg-gray-50 dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-xl flex items-center justify-between">
+        <div className="flex items-center space-x-2 text-xs font-bold text-gray-700 dark:text-gray-300">
+          <HardDriveDownload className="w-4 h-4 text-[#E31B23]" />
+          <span>Stored locally on this device (IndexedDB)</span>
+        </div>
+        <span className="text-[10px] text-gray-400 font-medium hidden sm:inline">Zero Cloud Storage Fees • 100% Private</span>
+      </div>
+
       {/* Category Tabs */}
       <div className="flex flex-wrap gap-2 border-b border-gray-200 dark:border-[#2A2A2A] pb-3">
         {categories.map((cat) => (
@@ -137,7 +146,7 @@ export const FileLibrary: React.FC = () => {
             className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-2xl p-4 shadow-xs flex flex-col justify-between space-y-3 group hover:border-red-300 transition"
           >
             <div className="h-32 bg-gray-50 dark:bg-[#222] rounded-xl flex items-center justify-center overflow-hidden p-2 border border-gray-100 dark:border-[#2A2A2A] relative">
-              {f.url.startsWith('http') || f.url.startsWith('data:image') ? (
+              {f.url.startsWith('http') || f.url.startsWith('data:image') || f.url.startsWith('blob:') ? (
                 <img src={f.url} alt={f.fileName} className="max-h-full max-w-full object-contain" />
               ) : (
                 <FileText className="w-12 h-12 text-[#E31B23]" />
@@ -149,7 +158,10 @@ export const FileLibrary: React.FC = () => {
 
             <div>
               <p className="font-bold text-xs text-gray-900 dark:text-gray-100 truncate">{f.fileName}</p>
-              <p className="text-[10px] text-gray-400">Uploaded {new Date(f.uploadedAt).toLocaleDateString()}</p>
+              <div className="flex items-center justify-between mt-0.5">
+                <p className="text-[10px] text-gray-400">Uploaded {new Date(f.uploadedAt).toLocaleDateString()}</p>
+                <span className="text-[9px] text-emerald-600 dark:text-emerald-400 font-bold">Stored locally on this device</span>
+              </div>
             </div>
 
             <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-[#2A2A2A]">
@@ -184,7 +196,7 @@ export const FileLibrary: React.FC = () => {
       )}
 
       {/* Upload Modal */}
-      <Modal isOpen={isUploadModalOpen} onClose={() => setIsUploadModalOpen(false)} title="Upload Asset File" maxWidth="md">
+      <Modal isOpen={isUploadModalOpen} onClose={() => setIsUploadModalOpen(false)} title="Upload Asset File to IndexedDB" maxWidth="md">
         <form onSubmit={handleSubmit} className="space-y-4 text-xs">
           <div>
             <label className="block text-gray-700 dark:text-gray-300 font-bold mb-1">
@@ -280,7 +292,7 @@ export const FileLibrary: React.FC = () => {
               className="px-5 py-2 bg-[#E31B23] hover:bg-red-700 text-white rounded-xl font-bold flex items-center space-x-2 shadow-md transition"
             >
               <Upload className="w-4 h-4" />
-              <span>Upload to Library</span>
+              <span>Upload to IndexedDB</span>
             </button>
           </div>
         </form>

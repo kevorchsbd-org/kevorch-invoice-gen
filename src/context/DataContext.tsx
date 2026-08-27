@@ -67,6 +67,15 @@ interface DataContextType {
 
   // Activity Log Helper
   logActivity: (clientId: string, clientName: string, action: string, description: string) => Promise<void>;
+
+  // Application Usage Metrics (Tracked Session Operations)
+  usageMetrics: {
+    trackedReads: number;
+    trackedWrites: number;
+    trackedDeletes: number;
+    lastUpdated: string;
+  };
+  refreshMetrics: () => void;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -132,6 +141,44 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
+  const [usageMetrics, setUsageMetrics] = useState({
+    trackedReads: 0,
+    trackedWrites: 0,
+    trackedDeletes: 0,
+    lastUpdated: new Date().toISOString()
+  });
+
+  const recordReads = (count: number) => {
+    setUsageMetrics(prev => ({
+      ...prev,
+      trackedReads: prev.trackedReads + Math.max(1, count),
+      lastUpdated: new Date().toISOString()
+    }));
+  };
+
+  const recordWrites = (count: number = 1) => {
+    setUsageMetrics(prev => ({
+      ...prev,
+      trackedWrites: prev.trackedWrites + count,
+      lastUpdated: new Date().toISOString()
+    }));
+  };
+
+  const recordDeletes = (count: number = 1) => {
+    setUsageMetrics(prev => ({
+      ...prev,
+      trackedDeletes: prev.trackedDeletes + count,
+      lastUpdated: new Date().toISOString()
+    }));
+  };
+
+  const refreshMetrics = () => {
+    setUsageMetrics(prev => ({
+      ...prev,
+      lastUpdated: new Date().toISOString()
+    }));
+  };
+
   // Sync to Firestore in real-time when Firebase is configured & user is authenticated
   useEffect(() => {
     if (!isFirebaseConfigured() || typeof auth === 'undefined' || !auth) {
@@ -158,6 +205,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const list: Client[] = [];
             snapshot.forEach(doc => list.push({ ...doc.data(), id: doc.id } as Client));
             setClients(list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+            recordReads(snapshot.docs.length);
           }, err => console.warn('Clients snapshot listener warning:', err))
         );
 
@@ -167,6 +215,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const list: Quotation[] = [];
             snapshot.forEach(doc => list.push({ ...doc.data(), id: doc.id } as Quotation));
             setQuotations(list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+            recordReads(snapshot.docs.length);
           }, err => console.warn('Quotations snapshot listener warning:', err))
         );
 
@@ -176,6 +225,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const list: Invoice[] = [];
             snapshot.forEach(doc => list.push({ ...doc.data(), id: doc.id } as Invoice));
             setInvoices(list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+            recordReads(snapshot.docs.length);
           }, err => console.warn('Invoices snapshot listener warning:', err))
         );
 
@@ -185,6 +235,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const list: BalanceInvoice[] = [];
             snapshot.forEach(doc => list.push({ ...doc.data(), id: doc.id } as BalanceInvoice));
             setBalanceInvoices(list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+            recordReads(snapshot.docs.length);
           }, err => console.warn('BalanceInvoices snapshot listener warning:', err))
         );
 
@@ -194,6 +245,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const list: Payment[] = [];
             snapshot.forEach(doc => list.push({ ...doc.data(), id: doc.id } as Payment));
             setPayments(list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+            recordReads(snapshot.docs.length);
           }, err => console.warn('Payments snapshot listener warning:', err))
         );
 
@@ -203,6 +255,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const list: FileRecord[] = [];
             snapshot.forEach(doc => list.push({ ...doc.data(), id: doc.id } as FileRecord));
             setFiles(list.sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime()));
+            recordReads(snapshot.docs.length);
           }, err => console.warn('Files snapshot listener warning:', err))
         );
 
@@ -212,6 +265,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const list: ActivityLog[] = [];
             snapshot.forEach(doc => list.push({ ...doc.data(), id: doc.id } as ActivityLog));
             setActivityLogs(list.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
+            recordReads(snapshot.docs.length);
           }, err => console.warn('ActivityLogs snapshot listener warning:', err))
         );
 
@@ -221,6 +275,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const list: EmailLog[] = [];
             snapshot.forEach(doc => list.push({ ...doc.data(), id: doc.id } as EmailLog));
             setEmailLogs(list.sort((a, b) => new Date(b.sentDate).getTime() - new Date(a.sentDate).getTime()));
+            recordReads(snapshot.docs.length);
           }, err => console.warn('EmailLogs snapshot listener warning:', err))
         );
 
@@ -230,6 +285,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             if (snapshot.exists()) {
               setSettings(snapshot.data() as AppSettings);
             }
+            recordReads(1);
           }, err => console.warn('Settings snapshot listener warning:', err))
         );
 
@@ -275,6 +331,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       try {
         await setDoc(doc(db, colName, docId), data, { merge: true });
+        recordWrites(1);
         console.log(`✅ [Firestore Write Success] ${colName}/${docId}`);
       } catch (err: any) {
         console.error(`❌ [Firestore Write Error] ${colName}/${docId}:`, err);
@@ -291,6 +348,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       try {
         await deleteDoc(doc(db, colName, docId));
+        recordDeletes(1);
         console.log(`✅ [Firestore Delete Success] ${colName}/${docId}`);
       } catch (err: any) {
         console.error(`❌ [Firestore Delete Error] ${colName}/${docId}:`, err);
@@ -803,7 +861,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       addPayment, deletePayment,
       addFile, deleteFile,
       addEmailLog,
-      updateSettings, toggleTheme, resetAllData, logActivity
+      updateSettings, toggleTheme, resetAllData, logActivity,
+      usageMetrics, refreshMetrics
     }}>
       {children}
     </DataContext.Provider>

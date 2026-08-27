@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useData } from '../../context/DataContext';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { ClientFormModal } from './ClientFormModal';
+import { ClientLogo } from '../../components/common/ClientLogo';
 import { DocumentPreviewModal } from '../../components/documents/DocumentPreviewModal';
 import { Quotation, Invoice, BalanceInvoice } from '../../types';
 import {
@@ -88,13 +89,11 @@ export const ClientWorkspace: React.FC = () => {
       {/* Client Identity Header Card */}
       <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-2xl p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="flex items-start space-x-4">
-          {client.logoUrl ? (
-            <img src={client.logoUrl} alt={client.companyName} className="w-16 h-16 rounded-2xl object-contain border border-gray-200 dark:border-[#2A2A2A] p-1 bg-white" />
-          ) : (
-            <div className="w-16 h-16 rounded-2xl bg-red-50 dark:bg-red-950/40 text-[#E31B23] font-black flex items-center justify-center text-2xl border border-red-100">
-              {client.name[0]}
-            </div>
-          )}
+          <ClientLogo
+            client={client}
+            className="w-16 h-16 rounded-2xl object-contain border border-gray-200 dark:border-[#2A2A2A] p-1 bg-white"
+            fallbackClassName="w-16 h-16 rounded-2xl bg-red-50 dark:bg-red-950/40 text-[#E31B23] font-black flex items-center justify-center text-2xl border border-red-100"
+          />
           <div>
             <div className="flex items-center space-x-3">
               <h1 className="text-xl font-black text-gray-900 dark:text-gray-100">{client.name}</h1>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Invoice } from '../../types';
+import { getClientAsset, revokeObjectUrl } from '../../lib/indexedDb';
 
 interface DocumentProps {
   invoice: Invoice;
@@ -22,12 +23,38 @@ export const InvoicePDF: React.FC<DocumentProps> = ({ invoice }) => {
     clientLogoUrl
   } = invoice;
 
-  const clientLogo = clientLogoUrl || client?.logoUrl;
+  const [activeClientLogo, setActiveClientLogo] = useState<string | null>(clientLogoUrl || client?.logoUrl || null);
   const [logoFailed, setLogoFailed] = useState<boolean>(false);
 
   useEffect(() => {
     setLogoFailed(false);
-  }, [clientLogo]);
+    let createdUrl: string | null = null;
+
+    const resolveClientLogo = async () => {
+      if (client?.id) {
+        try {
+          const asset = await getClientAsset(client.id);
+          if (asset?.url) {
+            createdUrl = asset.url;
+            setActiveClientLogo(asset.url);
+            return;
+          }
+        } catch (e) {
+          console.warn('InvoicePDF logo load notice:', e);
+        }
+      }
+      const rawUrl = clientLogoUrl || client?.logoUrl;
+      if (rawUrl && !rawUrl.startsWith('blob:') && rawUrl !== 'indexeddb') {
+        setActiveClientLogo(rawUrl);
+      }
+    };
+
+    resolveClientLogo();
+
+    return () => {
+      if (createdUrl) revokeObjectUrl(createdUrl);
+    };
+  }, [client?.id, clientLogoUrl, client?.logoUrl]);
 
   return (
     <div id="invoice-pdf-canvas" className="printable-area bg-white text-black p-8 max-w-[800px] mx-auto border border-gray-200 rounded-none shadow-none font-sans text-xs">
@@ -86,10 +113,10 @@ export const InvoicePDF: React.FC<DocumentProps> = ({ invoice }) => {
         <div className="space-y-4 text-right flex flex-col justify-between items-end">
           {/* Top Right: Client Logo & Document Number */}
           <div className="w-full flex flex-col items-end">
-            {clientLogo && !logoFailed ? (
+            {activeClientLogo && !logoFailed ? (
               <div className="mb-2">
                 <img
-                  src={clientLogo}
+                  src={activeClientLogo}
                   alt="Client Logo"
                   className="h-14 max-w-[140px] object-contain"
                   onError={() => setLogoFailed(true)}
