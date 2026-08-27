@@ -1,10 +1,29 @@
 import {
   saveCompanyAsset,
-  saveClientAsset,
-  saveInvoicePdf,
-  saveQuotationPdf,
   getCompanyAsset,
-  deleteCompanyAsset
+  deleteCompanyAsset,
+  hasCompanyAsset,
+  saveClientAsset,
+  getClientAsset,
+  deleteClientAsset,
+  hasClientAsset,
+  saveQuotationPdf,
+  getQuotationPdf,
+  deleteQuotationPdf,
+  saveInvoicePdf,
+  getInvoicePdf,
+  deleteInvoicePdf,
+  saveBalanceInvoicePdf,
+  getBalanceInvoicePdf,
+  deleteBalanceInvoicePdf,
+  saveLocalDocumentFile,
+  getLocalDocumentFile,
+  deleteLocalDocumentFile,
+  getLocalStorageStats,
+  getLocalStorageUsage,
+  clearAllLocalAssets,
+  listAllLocalAssets,
+  revokeObjectUrl
 } from './indexedDb';
 
 export const BUCKET_NAME = 'documents';
@@ -42,8 +61,12 @@ export async function uploadDocumentFile(
     const parts = relativePath.split('quotations/')[1].split('/');
     const quotationId = parts[0] || relativePath;
     record = await saveQuotationPdf(quotationId, fileOrBase64 as Blob, fileName);
+  } else if (relativePath.includes('balanceInvoices/') || relativePath.includes('balance_invoices/')) {
+    const parts = relativePath.split('balanceInvoices/')[1]?.split('/') || relativePath.split('balance_invoices/')[1]?.split('/') || [relativePath];
+    const balanceInvoiceId = parts[0] || relativePath;
+    record = await saveBalanceInvoicePdf(balanceInvoiceId, fileOrBase64 as Blob, fileName);
   } else {
-    record = await saveCompanyAsset(relativePath, fileOrBase64, fileName);
+    record = await saveLocalDocumentFile(relativePath, fileOrBase64, fileName);
   }
 
   const url = URL.createObjectURL(record.blob);
@@ -66,6 +89,34 @@ export async function getFileAccessUrl(filePath: string): Promise<string> {
   if (filePath.startsWith('blob:') || filePath.startsWith('http:') || filePath.startsWith('https:') || filePath.startsWith('data:')) {
     return filePath;
   }
-  const asset = await getCompanyAsset(filePath);
+  const asset = await getCompanyAsset(filePath) || await getLocalDocumentFile(filePath);
   return asset ? asset.url : filePath;
 }
+
+export {
+  saveCompanyAsset,
+  getCompanyAsset,
+  deleteCompanyAsset,
+  hasCompanyAsset,
+  saveClientAsset,
+  getClientAsset,
+  deleteClientAsset,
+  hasClientAsset,
+  saveQuotationPdf,
+  getQuotationPdf,
+  deleteQuotationPdf,
+  saveInvoicePdf,
+  getInvoicePdf,
+  deleteInvoicePdf,
+  saveBalanceInvoicePdf,
+  getBalanceInvoicePdf,
+  deleteBalanceInvoicePdf,
+  saveLocalDocumentFile,
+  getLocalDocumentFile,
+  deleteLocalDocumentFile,
+  getLocalStorageStats,
+  getLocalStorageUsage,
+  clearAllLocalAssets,
+  listAllLocalAssets,
+  revokeObjectUrl
+};

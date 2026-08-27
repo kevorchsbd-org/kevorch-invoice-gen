@@ -10,6 +10,7 @@ import {
 import { db, auth, isFirebaseConfigured } from '../lib/firebase';
 import { collection, doc, setDoc, deleteDoc, onSnapshot } from 'firebase/firestore';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
+import { deleteClientAsset } from '../lib/indexedDb';
 
 interface DataContextType {
   clients: Client[];
@@ -404,6 +405,13 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     setClients(prev => prev.filter(c => c.id !== id));
     await removeFromFirestore('clients', id);
+
+    // After successful Firestore deletion, attempt local IndexedDB asset cleanup safely
+    try {
+      await deleteClientAsset(id);
+    } catch (err) {
+      console.warn(`[IndexedDB Cleanup Warning] Failed to delete local asset for client ${id}:`, err);
+    }
   };
 
   const getClientById = (id: string) => clients.find(c => c.id === id);

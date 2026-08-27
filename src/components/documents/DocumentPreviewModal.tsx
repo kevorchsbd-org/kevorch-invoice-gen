@@ -6,7 +6,7 @@ import { BalanceInvoicePDF } from './BalanceInvoicePDF';
 import { SendEmailModal } from './SendEmailModal';
 import { Modal } from '../common/Modal';
 import { Printer, Download, Mail, CheckCircle2, HardDriveDownload } from 'lucide-react';
-import { saveInvoicePdf, saveQuotationPdf } from '../../lib/indexedDb';
+import { saveInvoicePdf, saveQuotationPdf, saveBalanceInvoicePdf } from '../../lib/indexedDb';
 // @ts-ignore
 import html2pdf from 'html2pdf.js';
 
@@ -62,12 +62,14 @@ export const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
     };
 
     (html2pdf() as any).set(opt).from(element).outputPdf('blob').then(async (pdfBlob: Blob) => {
-      // 1. Save generated PDF locally into IndexedDB
+      // 1. Save generated PDF locally into IndexedDB canonical stores
       try {
         if (documentType === 'Invoice') {
           await saveInvoicePdf(docItem.id, pdfBlob, filename);
         } else if (documentType === 'Quotation') {
           await saveQuotationPdf(docItem.id, pdfBlob, filename);
+        } else if (documentType === 'Balance Invoice') {
+          await saveBalanceInvoicePdf(docItem.id, pdfBlob, filename);
         }
       } catch (err) {
         console.warn('Local IndexedDB PDF save notice:', err);

@@ -1,15 +1,27 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useData } from '../../context/DataContext';
 import { FileCategory } from '../../types';
 import { Modal } from '../../components/common/Modal';
-import { Image as ImageIcon, Upload, Trash2, Plus, ExternalLink, FileText, HardDriveDownload } from 'lucide-react';
+import { Image as ImageIcon, Upload, Trash2, Plus, ExternalLink, FileText, HardDriveDownload, RefreshCw } from 'lucide-react';
 import { uploadDocumentFile } from '../../lib/storage';
+import { listAllLocalAssets, revokeObjectUrl, STORES } from '../../lib/indexedDb';
+
+interface CombinedFileItem {
+  id: string;
+  fileName: string;
+  category: FileCategory;
+  url: string;
+  uploadedAt: string;
+  isLocalAssetStore?: boolean;
+  storeName?: string;
+}
 
 export const FileLibrary: React.FC = () => {
   const { files, addFile, deleteFile, clients } = useData();
 
   const [activeCategory, setActiveCategory] = useState<FileCategory | 'All'>('All');
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [localIndexedDbAssets, setLocalIndexedDbAssets] = useState<Array<CombinedFileItem>>([]);
 
   const [uploadData, setUploadData] = useState({
     fileName: '',
@@ -25,10 +37,68 @@ export const FileLibrary: React.FC = () => {
     'Signature',
     'Company Documents',
     'Client Documents',
+    'Quotation PDFs',
+    'Invoice PDFs',
+    'Balance Invoice PDFs',
     'Other Files'
   ];
 
-  const filteredFiles = files.filter(f => activeCategory === 'All' || f.category === activeCategory);
+  // Fetch local IndexedDB PDF and asset records
+  const loadLocalDbFiles = async () => {
+    try {
+      const records = await listAllLocalAssets();
+      const mapped: CombinedFileItem[] = records.map(r => {
+        let cat: FileCategory = 'Other Files';
+        if (r.storeName === STORES.COMPANY_ASSETS) {
+          cat = r.id === 'company_signature' ? 'Signature' : 'Company Logo';
+        } else if (r.storeName === STORES.CLIENT_ASSETS) {
+          cat = 'Client Logo';
+        } else if (r.storeName === STORES.QUOTATION_FILES) {
+          cat = 'Quotation PDFs';
+        } else if (r.storeName === STORES.INVOICE_FILES) {
+          cat = 'Invoice PDFs';
+        } else if (r.storeName === STORES.BALANCE_INVOICE_FILES) {
+          cat = 'Balance Invoice PDFs';
+        }
+
+        return {
+          id: `idb_${r.storeName}_${r.id}`,
+          fileName: r.fileName,
+          category: cat,
+          url: r.url,
+          uploadedAt: r.updatedAt,
+          isLocalAssetStore: true,
+          storeName: r.storeName
+        };
+      });
+      setLocalIndexedDbAssets(mapped);
+    } catch (err) {
+      console.warn('Failed to list local IndexedDB assets:', err);
+    }
+  };
+
+  useEffect(() => {
+    loadLocalDbFiles();
+    return () => {
+      localIndexedDbAssets.forEach(item => {
+        if (item.url) revokeObjectUrl(item.url);
+      });
+    };
+  }, []);
+
+  // Merge Firestore metadata files with IndexedDB files, avoiding duplicates
+  const allDisplayFiles: CombinedFileItem[] = [
+    ...files.map(f => ({
+      id: f.id,
+      fileName: f.fileName,
+      category: f.category,
+      url: f.url,
+      uploadedAt: f.uploadedAt
+    })),
+    ...localIndexedDbAssets.filter(idbItem => !files.some(f => f.fileName === idbItem.fileName))
+  ];
+
+  const filteredFiles = allDisplayFiles.filter(f => activeCategory === 'All' || f.category === activeCategory);
 
   const [selectedFileObject, setSelectedFileObject] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -72,7 +142,7 @@ export const FileLibrary: React.FC = () => {
         storagePath = uploaded.path;
       }
 
-      addFile({
+      await addFile({
         fileName: uploadData.fileName || selectedFileObject?.name || 'Asset File',
         category: uploadData.category,
         url: finalUrl,
@@ -82,6 +152,7 @@ export const FileLibrary: React.FC = () => {
         filePath: storagePath
       });
 
+      await loadLocalDbFiles();
       setIsUploadModalOpen(false);
       setUploadData({ fileName: '', category: 'Company Logo', url: '', clientId: '' });
       setSelectedFileObject(null);
@@ -103,13 +174,22 @@ export const FileLibrary: React.FC = () => {
           </p>
         </div>
 
-        <button
-          onClick={() => setIsUploadModalOpen(true)}
-          className="px-4 py-2.5 bg-[#E31B23] hover:bg-red-700 text-white text-xs font-bold rounded-xl shadow-md transition flex items-center justify-center space-x-2"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Upload Asset File</span>
-        </button>
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={loadLocalDbFiles}
+            className="p-2.5 bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] text-gray-700 dark:text-gray-200 text-xs font-bold rounded-xl hover:bg-gray-50 transition"
+            title="Refresh local assets"
+          >
+            <RefreshCw className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => setIsUploadModalOpen(true)}
+            className="px-4 py-2.5 bg-[#E31B23] hover:bg-red-700 text-white text-xs font-bold rounded-xl shadow-md transition flex items-center justify-center space-x-2"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Upload Asset File</span>
+          </button>
+        </div>
       </div>
 
       {/* Local Storage Indicator Banner */}
@@ -175,13 +255,15 @@ export const FileLibrary: React.FC = () => {
                 <ExternalLink className="w-3 h-3" />
               </a>
 
-              <button
-                onClick={() => deleteFile(f.id)}
-                className="p-1 rounded text-gray-400 hover:text-red-600"
-                title="Delete file"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
+              {!f.isLocalAssetStore && (
+                <button
+                  onClick={() => deleteFile(f.id)}
+                  className="p-1 rounded text-gray-400 hover:text-red-600"
+                  title="Delete file"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
           </div>
         ))}
@@ -289,10 +371,11 @@ export const FileLibrary: React.FC = () => {
             </button>
             <button
               type="submit"
+              disabled={isUploading}
               className="px-5 py-2 bg-[#E31B23] hover:bg-red-700 text-white rounded-xl font-bold flex items-center space-x-2 shadow-md transition"
             >
               <Upload className="w-4 h-4" />
-              <span>Upload to IndexedDB</span>
+              <span>{isUploading ? 'Uploading...' : 'Upload to IndexedDB'}</span>
             </button>
           </div>
         </form>

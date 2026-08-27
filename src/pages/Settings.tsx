@@ -32,8 +32,10 @@ export const Settings: React.FC = () => {
   const [localStats, setLocalStats] = useState<LocalStorageStats>({
     companyAssetsCount: 0,
     clientAssetsCount: 0,
-    invoicePdfsCount: 0,
-    quotationPdfsCount: 0,
+    quotationFilesCount: 0,
+    invoiceFilesCount: 0,
+    balanceInvoiceFilesCount: 0,
+    otherFilesCount: 0,
     totalSizeBytes: 0,
   });
 
@@ -649,9 +651,9 @@ export const Settings: React.FC = () => {
               </span>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
               <div className="p-3 bg-gray-50 dark:bg-[#222] border border-gray-100 dark:border-[#2A2A2A] rounded-xl space-y-1">
-                <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase">Company Assets</span>
+                <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase">companyAssets</span>
                 <p className="text-xl font-extrabold font-mono text-gray-900 dark:text-gray-100">
                   {localStats.companyAssetsCount}
                 </p>
@@ -659,7 +661,7 @@ export const Settings: React.FC = () => {
               </div>
 
               <div className="p-3 bg-gray-50 dark:bg-[#222] border border-gray-100 dark:border-[#2A2A2A] rounded-xl space-y-1">
-                <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase">Client Assets</span>
+                <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase">clientAssets</span>
                 <p className="text-xl font-extrabold font-mono text-gray-900 dark:text-gray-100">
                   {localStats.clientAssetsCount}
                 </p>
@@ -667,43 +669,61 @@ export const Settings: React.FC = () => {
               </div>
 
               <div className="p-3 bg-gray-50 dark:bg-[#222] border border-gray-100 dark:border-[#2A2A2A] rounded-xl space-y-1">
-                <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase">Invoice PDFs</span>
+                <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase">quotationFiles</span>
                 <p className="text-xl font-extrabold font-mono text-gray-900 dark:text-gray-100">
-                  {localStats.invoicePdfsCount}
+                  {localStats.quotationFilesCount}
                 </p>
-                <span className="text-[9px] text-gray-400">Local PDFs</span>
+                <span className="text-[9px] text-gray-400">Quotation PDFs</span>
               </div>
 
               <div className="p-3 bg-gray-50 dark:bg-[#222] border border-gray-100 dark:border-[#2A2A2A] rounded-xl space-y-1">
-                <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase">Quotation PDFs</span>
+                <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase">invoiceFiles</span>
                 <p className="text-xl font-extrabold font-mono text-gray-900 dark:text-gray-100">
-                  {localStats.quotationPdfsCount}
+                  {localStats.invoiceFilesCount}
                 </p>
-                <span className="text-[9px] text-gray-400">Local PDFs</span>
+                <span className="text-[9px] text-gray-400">Invoice PDFs</span>
+              </div>
+
+              <div className="p-3 bg-gray-50 dark:bg-[#222] border border-gray-100 dark:border-[#2A2A2A] rounded-xl space-y-1">
+                <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase">balanceInvoiceFiles</span>
+                <p className="text-xl font-extrabold font-mono text-gray-900 dark:text-gray-100">
+                  {localStats.balanceInvoiceFilesCount}
+                </p>
+                <span className="text-[9px] text-gray-400">Balance PDFs</span>
+              </div>
+
+              <div className="p-3 bg-gray-50 dark:bg-[#222] border border-gray-100 dark:border-[#2A2A2A] rounded-xl space-y-1">
+                <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase">otherFiles</span>
+                <p className="text-xl font-extrabold font-mono text-gray-900 dark:text-gray-100">
+                  {localStats.otherFilesCount}
+                </p>
+                <span className="text-[9px] text-gray-400">Documents</span>
               </div>
             </div>
 
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between pt-2 gap-3 border-t border-gray-100 dark:border-[#2A2A2A]">
-              <p className="text-[11px] text-gray-500 dark:text-gray-400">
-                Your files are stored locally on this device/browser. They are not backed up to the cloud and will not automatically appear on another computer.
+            <div className="space-y-2 pt-2 border-t border-gray-100 dark:border-[#2A2A2A]">
+              <p className="text-[11px] text-gray-500 dark:text-gray-400 bg-amber-50/50 dark:bg-amber-950/20 p-3 rounded-xl border border-amber-200/50 dark:border-amber-900/30">
+                <strong>Cross-Device & Browser Data Notice:</strong> Logos, signatures, generated PDFs and attachments stored in IndexedDB are available only on this browser/device and do not automatically synchronize to another device. Clearing browser/site data may permanently remove locally stored IndexedDB assets while Firestore business records remain available.
               </p>
 
-              <button
-                type="button"
-                onClick={async () => {
-                  if (confirm("Are you sure you want to permanently clear all local logos, signatures, and stored PDF files from this browser/device?")) {
-                    await clearAllLocalAssets();
-                    setLogoPreviewUrl('');
-                    setSignaturePreviewUrl('');
-                    await refreshLocalStats();
-                    alert("Local assets cleared successfully!");
-                  }
-                }}
-                className="px-3.5 py-1.5 bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-300 hover:bg-red-200 text-xs font-bold rounded-xl transition flex items-center space-x-1.5 whitespace-nowrap self-start sm:self-auto"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>Clear Local Assets</span>
-              </button>
+              <div className="flex justify-end pt-1">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (confirm("This will permanently remove locally stored logos, signatures and generated PDFs from this browser/device. Firestore business records will not be deleted.")) {
+                      await clearAllLocalAssets();
+                      setLogoPreviewUrl('');
+                      setSignaturePreviewUrl('');
+                      await refreshLocalStats();
+                      alert("Local assets cleared successfully!");
+                    }
+                  }}
+                  className="px-3.5 py-1.5 bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-300 hover:bg-red-200 text-xs font-bold rounded-xl transition flex items-center space-x-1.5 whitespace-nowrap"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Clear Local Assets</span>
+                </button>
+              </div>
             </div>
           </div>
 

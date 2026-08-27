@@ -3,7 +3,17 @@ export type QuotationStatus = 'draft' | 'sent' | 'accepted' | 'rejected' | 'conv
 export type InvoiceStatus = 'draft' | 'sent' | 'overdue' | 'paid';
 export type BalanceInvoiceStatus = 'draft' | 'sent' | 'paid';
 export type PaymentMethod = 'Cash' | 'UPI' | 'Bank Transfer' | 'Card' | 'Other';
-export type FileCategory = 'Company Logo' | 'Client Logo' | 'Signature' | 'Company Documents' | 'Client Documents' | 'Other Files';
+export type FileCategory =
+  | 'Company Logo'
+  | 'Client Logo'
+  | 'Signature'
+  | 'Company Documents'
+  | 'Client Documents'
+  | 'Quotation PDFs'
+  | 'Invoice PDFs'
+  | 'Balance Invoice PDFs'
+  | 'Other Files';
+
 
 export interface Client {
   id: string;
@@ -122,7 +132,7 @@ export interface FileRecord {
   fileSize: number; // bytes
   fileType: string;
   clientId?: string;
-  filePath?: string; // Supabase Storage path
+  filePath?: string; // Local IndexedDB storage path
   uploadedAt: string;
 }
 

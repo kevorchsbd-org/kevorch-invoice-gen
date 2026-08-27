@@ -10,8 +10,10 @@ const DB_VERSION = 1;
 export const STORES = {
   COMPANY_ASSETS: 'companyAssets',
   CLIENT_ASSETS: 'clientAssets',
-  INVOICE_FILES: 'invoiceFiles',
   QUOTATION_FILES: 'quotationFiles',
+  INVOICE_FILES: 'invoiceFiles',
+  BALANCE_INVOICE_FILES: 'balanceInvoiceFiles',
+  OTHER_FILES: 'otherFiles',
 } as const;
 
 export interface LocalAssetRecord {
@@ -26,8 +28,10 @@ export interface LocalAssetRecord {
 export interface LocalStorageStats {
   companyAssetsCount: number;
   clientAssetsCount: number;
-  invoicePdfsCount: number;
-  quotationPdfsCount: number;
+  quotationFilesCount: number;
+  invoiceFilesCount: number;
+  balanceInvoiceFilesCount: number;
+  otherFilesCount: number;
   totalSizeBytes: number;
 }
 
@@ -46,18 +50,11 @@ function openDB(): Promise<IDBDatabase> {
     request.onupgradeneeded = (event) => {
       const db = (event.target as IDBOpenDBRequest).result;
 
-      if (!db.objectStoreNames.contains(STORES.COMPANY_ASSETS)) {
-        db.createObjectStore(STORES.COMPANY_ASSETS);
-      }
-      if (!db.objectStoreNames.contains(STORES.CLIENT_ASSETS)) {
-        db.createObjectStore(STORES.CLIENT_ASSETS);
-      }
-      if (!db.objectStoreNames.contains(STORES.INVOICE_FILES)) {
-        db.createObjectStore(STORES.INVOICE_FILES);
-      }
-      if (!db.objectStoreNames.contains(STORES.QUOTATION_FILES)) {
-        db.createObjectStore(STORES.QUOTATION_FILES);
-      }
+      Object.values(STORES).forEach((storeName) => {
+        if (!db.objectStoreNames.contains(storeName)) {
+          db.createObjectStore(storeName);
+        }
+      });
     };
 
     request.onsuccess = () => resolve(request.result);
@@ -148,6 +145,21 @@ async function deleteItem(storeName: string, key: string): Promise<boolean> {
 }
 
 /**
+ * Check if an item exists in a specified IndexedDB store
+ */
+async function hasItem(storeName: string, key: string): Promise<boolean> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(storeName, 'readonly');
+    const store = tx.objectStore(storeName);
+    const req = store.getKey(key);
+
+    req.onsuccess = () => resolve(req.result !== undefined);
+    req.onerror = () => reject(req.error || new Error(`Failed to check asset presence in ${storeName}`));
+  });
+}
+
+/**
  * Revoke object URL safely to prevent browser memory leaks
  */
 export function revokeObjectUrl(url?: string | null) {
@@ -175,6 +187,10 @@ export async function deleteCompanyAsset(key: 'company_logo' | 'company_signatur
   return deleteItem(STORES.COMPANY_ASSETS, key);
 }
 
+export async function hasCompanyAsset(key: 'company_logo' | 'company_signature' | string) {
+  return hasItem(STORES.COMPANY_ASSETS, key);
+}
+
 /* ====================================================================
    CLIENT ASSETS (Client Logo, Attachments)
    ==================================================================== */
@@ -190,19 +206,8 @@ export async function deleteClientAsset(clientId: string) {
   return deleteItem(STORES.CLIENT_ASSETS, clientId);
 }
 
-/* ====================================================================
-   INVOICE PDF FILES
-   ==================================================================== */
-export async function saveInvoicePdf(invoiceId: string, pdfBlob: Blob, fileName?: string) {
-  return putItem(STORES.INVOICE_FILES, invoiceId, pdfBlob, fileName || `Invoice_${invoiceId}.pdf`);
-}
-
-export async function getInvoicePdf(invoiceId: string) {
-  return getItem(STORES.INVOICE_FILES, invoiceId);
-}
-
-export async function deleteInvoicePdf(invoiceId: string) {
-  return deleteItem(STORES.INVOICE_FILES, invoiceId);
+export async function hasClientAsset(clientId: string) {
+  return hasItem(STORES.CLIENT_ASSETS, clientId);
 }
 
 /* ====================================================================
@@ -221,6 +226,51 @@ export async function deleteQuotationPdf(quotationId: string) {
 }
 
 /* ====================================================================
+   INVOICE PDF FILES
+   ==================================================================== */
+export async function saveInvoicePdf(invoiceId: string, pdfBlob: Blob, fileName?: string) {
+  return putItem(STORES.INVOICE_FILES, invoiceId, pdfBlob, fileName || `Invoice_${invoiceId}.pdf`);
+}
+
+export async function getInvoicePdf(invoiceId: string) {
+  return getItem(STORES.INVOICE_FILES, invoiceId);
+}
+
+export async function deleteInvoicePdf(invoiceId: string) {
+  return deleteItem(STORES.INVOICE_FILES, invoiceId);
+}
+
+/* ====================================================================
+   BALANCE INVOICE PDF FILES
+   ==================================================================== */
+export async function saveBalanceInvoicePdf(balanceInvoiceId: string, pdfBlob: Blob, fileName?: string) {
+  return putItem(STORES.BALANCE_INVOICE_FILES, balanceInvoiceId, pdfBlob, fileName || `BalanceInvoice_${balanceInvoiceId}.pdf`);
+}
+
+export async function getBalanceInvoicePdf(balanceInvoiceId: string) {
+  return getItem(STORES.BALANCE_INVOICE_FILES, balanceInvoiceId);
+}
+
+export async function deleteBalanceInvoicePdf(balanceInvoiceId: string) {
+  return deleteItem(STORES.BALANCE_INVOICE_FILES, balanceInvoiceId);
+}
+
+/* ====================================================================
+   GENERIC LOCAL DOCUMENT FILES (Other Files / Attachments)
+   ==================================================================== */
+export async function saveLocalDocumentFile(key: string, fileOrBlob: Blob | File | string, fileName?: string) {
+  return putItem(STORES.OTHER_FILES, key, fileOrBlob, fileName);
+}
+
+export async function getLocalDocumentFile(key: string) {
+  return getItem(STORES.OTHER_FILES, key);
+}
+
+export async function deleteLocalDocumentFile(key: string) {
+  return deleteItem(STORES.OTHER_FILES, key);
+}
+
+/* ====================================================================
    LISTING & STATS HELPERS
    ==================================================================== */
 export async function getLocalStorageStats(): Promise<LocalStorageStats> {
@@ -228,8 +278,10 @@ export async function getLocalStorageStats(): Promise<LocalStorageStats> {
   const stats: LocalStorageStats = {
     companyAssetsCount: 0,
     clientAssetsCount: 0,
-    invoicePdfsCount: 0,
-    quotationPdfsCount: 0,
+    quotationFilesCount: 0,
+    invoiceFilesCount: 0,
+    balanceInvoiceFilesCount: 0,
+    otherFilesCount: 0,
     totalSizeBytes: 0,
   };
 
@@ -249,8 +301,10 @@ export async function getLocalStorageStats(): Promise<LocalStorageStats> {
 
           if (storeName === STORES.COMPANY_ASSETS) stats.companyAssetsCount++;
           if (storeName === STORES.CLIENT_ASSETS) stats.clientAssetsCount++;
-          if (storeName === STORES.INVOICE_FILES) stats.invoicePdfsCount++;
-          if (storeName === STORES.QUOTATION_FILES) stats.quotationPdfsCount++;
+          if (storeName === STORES.QUOTATION_FILES) stats.quotationFilesCount++;
+          if (storeName === STORES.INVOICE_FILES) stats.invoiceFilesCount++;
+          if (storeName === STORES.BALANCE_INVOICE_FILES) stats.balanceInvoiceFilesCount++;
+          if (storeName === STORES.OTHER_FILES) stats.otherFilesCount++;
 
           cursor.continue();
         } else {
@@ -264,6 +318,8 @@ export async function getLocalStorageStats(): Promise<LocalStorageStats> {
 
   return stats;
 }
+
+export const getLocalStorageUsage = getLocalStorageStats;
 
 export async function listAllLocalAssets() {
   const db = await openDB();
