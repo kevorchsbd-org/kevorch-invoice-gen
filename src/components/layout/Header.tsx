@@ -25,14 +25,7 @@ export const Header: React.FC = () => {
               <img src="/logoicon3.png" alt="KEVORCH Logo" className="w-full h-full object-contain relative z-10 transition-transform duration-300 group-hover:scale-110" />
             </div>
             <div>
-              <div className="flex items-center space-x-2">
-                <img src="/whitelogo.png" alt="KEVORCH SBD" className="h-7 w-auto object-contain drop-shadow-xs" />
-                <span className="bg-white/20 backdrop-blur-md text-white text-[10px] uppercase font-bold px-2 py-0.5 rounded-full border border-white/30 flex items-center space-x-1">
-                  <Sparkles className="w-2.5 h-2.5 text-amber-300 animate-spin" />
-                  <span>Pro</span>
-                </span>
-              </div>
-              <p className="text-xs text-red-100 hidden sm:block font-medium opacity-90">Document & Billing Engine</p>
+              <img src="/whitelogo.png" alt="KEVORCH SBD" className="h-7 w-auto object-contain drop-shadow-xs" />
             </div>
           </motion.div>
 
