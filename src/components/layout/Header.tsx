@@ -26,7 +26,7 @@ export const Header: React.FC = () => {
             </div>
             <div>
               <div className="flex items-center space-x-2">
-                <span className="font-black text-lg tracking-wider text-white drop-shadow-xs">KEVORCH SBD</span>
+                <img src="/whitelogo.png" alt="KEVORCH SBD" className="h-7 w-auto object-contain drop-shadow-xs" />
                 <span className="bg-white/20 backdrop-blur-md text-white text-[10px] uppercase font-bold px-2 py-0.5 rounded-full border border-white/30 flex items-center space-x-1">
                   <Sparkles className="w-2.5 h-2.5 text-amber-300 animate-spin" />
                   <span>Pro</span>
