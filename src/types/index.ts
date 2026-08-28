@@ -21,6 +21,7 @@ export interface Client {
   companyName: string;
   mobile: string;
   email: string;
+  ccEmails?: string[];
   address: string;
   city: string;
   state: string;
@@ -143,12 +144,12 @@ export interface EmailLog {
   id: string;
   recipient: string;
   cc?: string;
-  documentType: 'Quotation' | 'Invoice' | 'Balance Invoice';
+  documentType: 'Quotation' | 'Invoice' | 'Balance Invoice' | 'Payment Receipt';
   documentNumber: string;
   documentId: string;
   subject: string;
   sentDate: string;
-  status: 'Sent' | 'Failed' | 'Pending';
+  status: 'Draft Opened' | 'Sent' | 'Failed' | 'Pending';
 }
 
 export interface ActivityLog {

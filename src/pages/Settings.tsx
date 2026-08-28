@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useData } from '../context/DataContext';
+import { ConfirmationModal } from '../components/common/ConfirmationModal';
 import {
   Building2, FileText, CreditCard, Scale, Moon, Sun, Save, CheckCircle2,
   Trash2, Database, RefreshCw, AlertTriangle, ShieldCheck, Layers,
@@ -23,6 +24,8 @@ export const Settings: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState<'company' | 'quotation' | 'invoice' | 'balance' | 'appearance' | 'firebase_usage'>('company');
   const [successToast, setSuccessToast] = useState(false);
+  const [resetModalType, setResetModalType] = useState<'assets' | 'all' | null>(null);
+  const [isResetting, setIsResetting] = useState(false);
 
   const [companyForm, setCompanyForm] = useState(settings.company);
   const [quotationForm, setQuotationForm] = useState(settings.quotation);
@@ -709,15 +712,7 @@ export const Settings: React.FC = () => {
               <div className="flex justify-end pt-1">
                 <button
                   type="button"
-                  onClick={async () => {
-                    if (confirm("This will permanently remove locally stored logos, signatures and generated PDFs from this browser/device. Firestore business records will not be deleted.")) {
-                      await clearAllLocalAssets();
-                      setLogoPreviewUrl('');
-                      setSignaturePreviewUrl('');
-                      await refreshLocalStats();
-                      alert("Local assets cleared successfully!");
-                    }
-                  }}
+                  onClick={() => setResetModalType('assets')}
                   className="px-3.5 py-1.5 bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-300 hover:bg-red-200 text-xs font-bold rounded-xl transition flex items-center space-x-1.5 whitespace-nowrap"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
@@ -847,60 +842,181 @@ export const Settings: React.FC = () => {
             </p>
           </div>
 
-          {/* 4. Optimization Recommendations */}
+          {/* 1. Storage & Quota Estimation Card */}
+          <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-2xl p-6 shadow-xs space-y-4">
+            <div className="flex items-center justify-between border-b border-gray-100 dark:border-[#2A2A2A] pb-3">
+              <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wider flex items-center space-x-2">
+                <HardDrive className="w-4 h-4 text-[#E31B23]" />
+                <span>Estimated Firestore Database Usage</span>
+              </h2>
+              <span className="text-xs font-mono font-bold text-gray-700 dark:text-gray-300">
+                {estimatedMb < 1 ? `${(estimatedJsonBytes / 1024).toFixed(2)} KB` : `${estimatedMb.toFixed(2)} MB`} / 1.0 GB Free Quota
+              </span>
+            </div>
+
+            {/* Progress Bar */}
+            <div className="space-y-1.5">
+              <div className="w-full bg-gray-100 dark:bg-[#252525] h-3 rounded-full overflow-hidden p-0.5 border border-gray-200 dark:border-[#333]">
+                <div
+                  className={`h-full rounded-full transition-all duration-500 ${
+                    usagePercentage >= 90 ? 'bg-red-600' :
+                    usagePercentage >= 75 ? 'bg-orange-500' :
+                    usagePercentage >= 50 ? 'bg-amber-500' : 'bg-emerald-500'
+                  }`}
+                  style={{ width: `${Math.max(1, usagePercentage)}%` }}
+                />
+              </div>
+              <div className="flex justify-between text-[10px] text-gray-400 font-medium">
+                <span>0 MB</span>
+                <span>500 MB (50%)</span>
+                <span>1,024 MB (1 GB Max)</span>
+              </div>
+            </div>
+
+            <p className="text-[11px] text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-[#222] p-3 rounded-xl border border-gray-100 dark:border-[#2A2A2A] flex items-start space-x-2">
+              <Info className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
+              <span>
+                <strong>Note:</strong> Calculated from stringified application state + Firestore document metadata overhead. Official server-side billing storage numbers are maintained in the Firebase Web Console.
+              </span>
+            </p>
+          </div>
+
+          {/* 2. Collection Document Counts Grid */}
           <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-2xl p-6 shadow-xs space-y-4">
             <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wider flex items-center space-x-2">
-              <Zap className="w-4 h-4 text-[#E31B23]" />
-              <span>Firebase Spark Plan Optimization Recommendations</span>
+              <Layers className="w-4 h-4 text-[#E31B23]" />
+              <span>Firestore Collection Document Counts</span>
             </h2>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
               {[
-                { title: 'Local File Storage (IndexedDB)', desc: 'Files, logos, and PDFs are stored locally in IndexedDB, avoiding cloud storage fees.' },
-                { title: 'Realtime Listener Efficiency', desc: 'Realtime snapshot listeners stream delta updates, preventing re-fetching full collections.' },
-                { title: 'Offline Data Caching', desc: 'State is cached in localStorage to allow instant offline access without extra network calls.' },
-                { title: 'Activity Log Maintenance', desc: 'Use Database Reset when needed to prune old test logs and prevent document clutter.' },
-              ].map((rec, i) => (
-                <div key={i} className="p-3 bg-gray-50 dark:bg-[#222] rounded-xl border border-gray-100 dark:border-[#2A2A2A] space-y-1">
-                  <h4 className="font-bold text-gray-900 dark:text-gray-100 flex items-center space-x-1.5">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                    <span>{rec.title}</span>
-                  </h4>
-                  <p className="text-[11px] text-gray-500 dark:text-gray-400">{rec.desc}</p>
+                { label: 'Clients', count: documentCounts.clients },
+                { label: 'Quotations', count: documentCounts.quotations },
+                { label: 'Invoices', count: documentCounts.invoices },
+                { label: 'Bal Invoices', count: documentCounts.balanceInvoices },
+                { label: 'Payments', count: documentCounts.payments },
+                { label: 'File Library', count: documentCounts.files },
+                { label: 'Activity Logs', count: documentCounts.activityLogs },
+                { label: 'Email Logs', count: documentCounts.emailLogs },
+                { label: 'Settings', count: documentCounts.settings },
+                { label: 'Total Documents', count: totalDocCount, highlight: true },
+              ].map((item) => (
+                <div
+                  key={item.label}
+                  className={`p-3 rounded-xl border flex flex-col justify-between space-y-1 transition ${
+                    item.highlight
+                      ? 'bg-red-50/50 dark:bg-red-950/20 border-red-200 dark:border-red-900/40 text-[#E31B23]'
+                      : 'bg-gray-50 dark:bg-[#222] border-gray-100 dark:border-[#2A2A2A]'
+                  }`}
+                >
+                  <span className="text-[10px] text-gray-500 dark:text-gray-400 font-bold uppercase truncate">{item.label}</span>
+                  <span className="text-lg font-extrabold font-mono text-gray-900 dark:text-gray-100">
+                    {item.count.toLocaleString()}
+                  </span>
+                  <span className="text-[9px] text-gray-400">docs stored</span>
                 </div>
               ))}
             </div>
           </div>
+
+          {/* 3. Session Tracked Operations */}
+          <div className="bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#2A2A2A] rounded-2xl p-6 shadow-xs space-y-4">
+            <div className="flex items-center justify-between border-b border-gray-100 dark:border-[#2A2A2A] pb-3">
+              <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wider flex items-center space-x-2">
+                <Activity className="w-4 h-4 text-[#E31B23]" />
+                <span>Application-Tracked Session Activity</span>
+              </h2>
+              <span className="text-[10px] text-gray-400 font-medium">
+                Spark Daily Limits Reference
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="p-4 bg-gray-50 dark:bg-[#222] border border-gray-100 dark:border-[#2A2A2A] rounded-xl space-y-1">
+                <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase">Document Reads (Session)</span>
+                <p className="text-2xl font-extrabold font-mono text-blue-600 dark:text-blue-400">
+                  {usageMetrics.trackedReads.toLocaleString()}
+                </p>
+                <p className="text-[10px] text-gray-400">Spark Free Limit: 50,000 / day</p>
+              </div>
+
+              <div className="p-4 bg-gray-50 dark:bg-[#222] border border-gray-100 dark:border-[#2A2A2A] rounded-xl space-y-1">
+                <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase">Document Writes (Session)</span>
+                <p className="text-2xl font-extrabold font-mono text-emerald-600 dark:text-emerald-400">
+                  {usageMetrics.trackedWrites.toLocaleString()}
+                </p>
+                <p className="text-[10px] text-gray-400">Spark Free Limit: 20,000 / day</p>
+              </div>
+
+              <div className="p-4 bg-gray-50 dark:bg-[#222] border border-gray-100 dark:border-[#2A2A2A] rounded-xl space-y-1">
+                <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase">Document Deletes (Session)</span>
+                <p className="text-2xl font-extrabold font-mono text-amber-600 dark:text-amber-400">
+                  {usageMetrics.trackedDeletes.toLocaleString()}
+                </p>
+                <p className="text-[10px] text-gray-400">Spark Free Limit: 20,000 / day</p>
+              </div>
+            </div>
+
+            <p className="text-[11px] text-gray-400">
+              * Tracked in memory during your active browser session. Zero extra queries are executed to measure these operations.
+            </p>
+          </div>
+
+          {/* Danger Zone Card */}
+          <div className="p-6 bg-red-50/60 dark:bg-red-950/20 border border-red-200 dark:border-red-900/40 rounded-3xl space-y-4">
+            <div>
+              <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 flex items-center space-x-2">
+                <Trash2 className="w-4 h-4 text-[#E31B23]" />
+                <span>Database Reset & Clear All Data</span>
+              </h3>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                Wipe all clients, quotations, invoices, payments, and file logs to start completely fresh.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setResetModalType('all')}
+              className="px-4 py-2 bg-[#E31B23] hover:bg-red-700 text-white text-xs font-bold rounded-xl shadow-md transition flex items-center space-x-2 whitespace-nowrap"
+            >
+              <Trash2 className="w-4 h-4" />
+              <span>Clear All Stored Data</span>
+            </button>
+          </div>
         </div>
       )}
 
-      {/* Clear / Reset All Stored Data Section */}
-      <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/40 rounded-2xl p-6 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 flex items-center space-x-2">
-            <Trash2 className="w-4 h-4 text-[#E31B23]" />
-            <span>Database Reset & Clear All Data</span>
-          </h3>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            Wipe all clients, quotations, invoices, payments, and file logs to start completely fresh.
-          </p>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => {
-            if (confirm("Are you sure you want to delete ALL clients, quotations, invoices, payments, and activity logs? This action cannot be undone.")) {
-              resetAllData();
-              alert("All data cleared successfully!");
+      {/* Reusable Confirmation Modal for Settings Actions */}
+      <ConfirmationModal
+        open={Boolean(resetModalType)}
+        title={resetModalType === 'assets' ? "Clear Local IndexedDB Assets?" : "Database Reset & Clear All Data?"}
+        description={resetModalType === 'assets' ? "Are you sure you want to clear all locally stored logos, signatures, and generated PDFs from this browser?" : "Are you sure you want to delete ALL clients, quotations, invoices, payments, and activity logs?"}
+        warning={resetModalType === 'assets' ? "This file is stored locally on this device/browser." : "This action cannot be undone and will reset the entire system database."}
+        confirmText={resetModalType === 'assets' ? "Clear Local Assets" : "Clear All Data"}
+        cancelText="Cancel"
+        loading={isResetting}
+        onConfirm={async () => {
+          setIsResetting(true);
+          try {
+            if (resetModalType === 'assets') {
+              await clearAllLocalAssets();
+              setLogoPreviewUrl('');
+              setSignaturePreviewUrl('');
+              await refreshLocalStats();
+              setIsResetting(false);
+              setResetModalType(null);
+            } else if (resetModalType === 'all') {
+              await resetAllData();
+              setIsResetting(false);
+              setResetModalType(null);
               window.location.reload();
             }
-          }}
-          className="px-4 py-2 bg-[#E31B23] hover:bg-red-700 text-white text-xs font-bold rounded-xl shadow-md transition flex items-center space-x-2 whitespace-nowrap"
-        >
-          <Trash2 className="w-4 h-4" />
-          <span>Clear All Stored Data</span>
-        </button>
-      </div>
+          } catch (err) {
+            setIsResetting(false);
+          }
+        }}
+        onCancel={() => setResetModalType(null)}
+      />
     </div>
   );
 };

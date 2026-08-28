@@ -2,9 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useData } from '../../context/DataContext';
 import { RecordPaymentModal } from './RecordPaymentModal';
 import { PaymentReconciliationModal } from './PaymentReconciliationModal';
+import { ConfirmationModal } from '../../components/common/ConfirmationModal';
+import { SendEmailModal } from '../../components/documents/SendEmailModal';
+import { Payment } from '../../types';
 import { useSearchParams } from 'react-router-dom';
 import {
-  IndianRupee, Plus, Search, Trash2, Calendar, FileText, ArrowUpRight, ShieldAlert
+  IndianRupee, Plus, Search, Trash2, Calendar, FileText, ArrowUpRight, ShieldAlert, CheckCircle2, Mail
 } from 'lucide-react';
  
 export const PaymentList: React.FC = () => {
@@ -14,6 +17,14 @@ export const PaymentList: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isReconcileOpen, setIsReconcileOpen] = useState(false);
+  const [deleteTargetPayment, setDeleteTargetPayment] = useState<Payment | null>(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [successToast, setSuccessToast] = useState<string | null>(null);
+
+  const [emailTargetPayment, setEmailTargetPayment] = useState<Payment | null>(null);
+  const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
 
   useEffect(() => {
     if (searchParams.get('action') === 'new') {
@@ -34,9 +45,26 @@ export const PaymentList: React.FC = () => {
 
   const totalCollected = payments.reduce((sum, p) => sum + p.amount, 0);
 
-  const handleDelete = (id: string, amount: number, client: string) => {
-    if (confirm(`Are you sure you want to delete payment of ₹${amount.toLocaleString('en-IN')} from ${client}? This will recalculate the invoice balance.`)) {
-      deletePayment(id);
+  const promptDeletePayment = (p: Payment) => {
+    setDeleteTargetPayment(p);
+    setIsDeleteModalOpen(true);
+    setDeleteError(null);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTargetPayment) return;
+    setIsDeleting(true);
+    setDeleteError(null);
+    try {
+      await deletePayment(deleteTargetPayment.id);
+      setIsDeleting(false);
+      setIsDeleteModalOpen(false);
+      setSuccessToast(`Payment of ₹${deleteTargetPayment.amount.toLocaleString('en-IN')} deleted successfully.`);
+      setTimeout(() => setSuccessToast(null), 4000);
+      setDeleteTargetPayment(null);
+    } catch (err: any) {
+      setIsDeleting(false);
+      setDeleteError(err.message || 'Failed to delete payment.');
     }
   };
 
@@ -132,13 +160,25 @@ export const PaymentList: React.FC = () => {
                     + ₹{p.amount.toLocaleString('en-IN')}
                   </td>
                   <td className="py-3.5 px-4 text-center">
-                    <button
-                      onClick={() => handleDelete(p.id, p.amount, p.clientName)}
-                      className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
-                      title="Delete payment & update invoice balance"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center justify-center space-x-1">
+                      <button
+                        onClick={() => {
+                          setEmailTargetPayment(p);
+                          setIsEmailModalOpen(true);
+                        }}
+                        className="p-1.5 rounded-lg text-gray-400 hover:text-[#E31B23] hover:bg-red-50 dark:hover:bg-red-950/30"
+                        title="Send Payment Receipt Email"
+                      >
+                        <Mail className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => promptDeletePayment(p)}
+                        className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
+                        title="Delete payment & update invoice balance"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -165,6 +205,39 @@ export const PaymentList: React.FC = () => {
         isOpen={isReconcileOpen}
         onClose={() => setIsReconcileOpen(false)}
       />
+
+      {emailTargetPayment && (
+        <SendEmailModal
+          isOpen={isEmailModalOpen}
+          onClose={() => {
+            setIsEmailModalOpen(false);
+            setEmailTargetPayment(null);
+          }}
+          document={emailTargetPayment}
+          documentType="Payment Receipt"
+        />
+      )}
+
+      {/* Reusable Delete Payment Confirmation Modal */}
+      {deleteTargetPayment && (
+        <ConfirmationModal
+          open={isDeleteModalOpen}
+          title="Delete Payment Record?"
+          recordLabel={`₹${deleteTargetPayment.amount.toLocaleString('en-IN')} (${deleteTargetPayment.clientName})`}
+          description="Are you sure you want to delete payment of"
+          warning="Deleting this payment will recalculate the invoice paid amount, balance and payment status."
+          confirmText="Delete Payment"
+          cancelText="Cancel"
+          loading={isDeleting}
+          error={deleteError}
+          onConfirm={handleConfirmDelete}
+          onCancel={() => {
+            setIsDeleteModalOpen(false);
+            setDeleteTargetPayment(null);
+            setDeleteError(null);
+          }}
+        />
+      )}
     </div>
   );
 };

@@ -3,18 +3,23 @@ import { useData } from '../../context/DataContext';
 import { Client } from '../../types';
 import { ClientFormModal } from './ClientFormModal';
 import { ClientLogo } from '../../components/common/ClientLogo';
+import { ConfirmationModal } from '../../components/common/ConfirmationModal';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Search, Plus, ExternalLink, Edit, Trash2, Building2, Phone, Mail, MapPin } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export const ClientList: React.FC = () => {
-  const { clients, deleteClient, invoices } = useData();
+  const { clients, deleteClient, invoices, quotations } = useData();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
+  const [deleteTargetClient, setDeleteTargetClient] = useState<Client | null>(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     if (searchParams.get('action') === 'new') {
@@ -40,10 +45,25 @@ export const ClientList: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  const handleDelete = (client: Client, e: React.MouseEvent) => {
+  const promptDeleteClient = (client: Client, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (confirm(`Are you sure you want to delete client "${client.name}" (${client.companyName})?`)) {
-      deleteClient(client.id);
+    setDeleteTargetClient(client);
+    setIsDeleteModalOpen(true);
+    setDeleteError(null);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTargetClient) return;
+    setIsDeleting(true);
+    setDeleteError(null);
+    try {
+      await deleteClient(deleteTargetClient.id);
+      setIsDeleting(false);
+      setIsDeleteModalOpen(false);
+      setDeleteTargetClient(null);
+    } catch (err: any) {
+      setIsDeleting(false);
+      setDeleteError(err.message || 'Failed to delete client.');
     }
   };
 
@@ -145,7 +165,7 @@ export const ClientList: React.FC = () => {
                       <Edit className="w-3.5 h-3.5" />
                     </button>
                     <button
-                      onClick={(e) => handleDelete(client, e)}
+                      onClick={(e) => promptDeleteClient(client, e)}
                       className="p-1.5 rounded-xl text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
                       title="Delete Client"
                     >
@@ -209,6 +229,31 @@ export const ClientList: React.FC = () => {
         onClose={() => setIsModalOpen(false)}
         clientToEdit={editingClient}
       />
+
+      {/* Reusable Delete Client Confirmation Modal */}
+      {deleteTargetClient && (
+        <ConfirmationModal
+          open={isDeleteModalOpen}
+          title="Delete Client Profile?"
+          recordLabel={`${deleteTargetClient.name} (${deleteTargetClient.companyName})`}
+          description="Are you sure you want to delete client"
+          warning={
+            (quotations.some(q => q.clientId === deleteTargetClient.id) || invoices.some(i => i.clientId === deleteTargetClient.id))
+              ? "This client has linked quotations, invoices, or payment records. Deleting this client may affect historical record integrity."
+              : "This action cannot be undone."
+          }
+          confirmText="Delete Client"
+          cancelText="Cancel"
+          loading={isDeleting}
+          error={deleteError}
+          onConfirm={handleConfirmDelete}
+          onCancel={() => {
+            setIsDeleteModalOpen(false);
+            setDeleteTargetClient(null);
+            setDeleteError(null);
+          }}
+        />
+      )}
     </div>
   );
 };

@@ -4,8 +4,9 @@ import { BalanceInvoice } from '../../types';
 import { useNavigate } from 'react-router-dom';
 import { DocumentPreviewModal } from '../../components/documents/DocumentPreviewModal';
 import { SendEmailModal } from '../../components/documents/SendEmailModal';
+import { ConfirmationModal } from '../../components/common/ConfirmationModal';
 import {
-  Scale, Plus, Search, Eye, Edit, Trash2, Mail
+  Scale, Plus, Search, Eye, Edit, Trash2, Mail, CheckCircle2
 } from 'lucide-react';
 
 export const BalanceInvoiceList: React.FC = () => {
@@ -16,6 +17,11 @@ export const BalanceInvoiceList: React.FC = () => {
   const [selectedDoc, setSelectedDoc] = useState<BalanceInvoice | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [isEmailOpen, setIsEmailOpen] = useState(false);
+  const [deleteTargetBal, setDeleteTargetBal] = useState<BalanceInvoice | null>(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [successToast, setSuccessToast] = useState<string | null>(null);
 
   const filtered = balanceInvoices.filter(b => {
     const query = searchQuery.toLowerCase();
@@ -37,9 +43,26 @@ export const BalanceInvoiceList: React.FC = () => {
     setIsEmailOpen(true);
   };
 
-  const handleDelete = (id: string, num: string) => {
-    if (confirm(`Are you sure you want to delete balance invoice ${num}?`)) {
-      deleteBalanceInvoice(id);
+  const promptDeleteBalanceInvoice = (b: BalanceInvoice) => {
+    setDeleteTargetBal(b);
+    setIsDeleteModalOpen(true);
+    setDeleteError(null);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTargetBal) return;
+    setIsDeleting(true);
+    setDeleteError(null);
+    try {
+      await deleteBalanceInvoice(deleteTargetBal.id);
+      setIsDeleting(false);
+      setIsDeleteModalOpen(false);
+      setSuccessToast(`Balance invoice ${deleteTargetBal.balanceInvoiceNumber} deleted successfully.`);
+      setTimeout(() => setSuccessToast(null), 4000);
+      setDeleteTargetBal(null);
+    } catch (err: any) {
+      setIsDeleting(false);
+      setDeleteError(err.message || 'Failed to delete balance invoice.');
     }
   };
 
@@ -144,7 +167,7 @@ export const BalanceInvoiceList: React.FC = () => {
                       </button>
 
                       <button
-                        onClick={() => handleDelete(b.id, b.balanceInvoiceNumber)}
+                        onClick={() => promptDeleteBalanceInvoice(b)}
                         className="p-1.5 rounded-lg text-gray-400 hover:text-red-600"
                         title="Delete Balance Invoice"
                       >
@@ -184,6 +207,27 @@ export const BalanceInvoiceList: React.FC = () => {
           onClose={() => setIsEmailOpen(false)}
           document={selectedDoc}
           documentType="Balance Invoice"
+        />
+      )}
+
+      {/* Reusable Delete Balance Invoice Confirmation Modal */}
+      {deleteTargetBal && (
+        <ConfirmationModal
+          open={isDeleteModalOpen}
+          title="Delete Balance Invoice?"
+          recordLabel={deleteTargetBal.balanceInvoiceNumber}
+          description="Are you sure you want to delete balance invoice"
+          warning="This balance invoice is linked to an original invoice."
+          confirmText="Delete Balance Invoice"
+          cancelText="Cancel"
+          loading={isDeleting}
+          error={deleteError}
+          onConfirm={handleConfirmDelete}
+          onCancel={() => {
+            setIsDeleteModalOpen(false);
+            setDeleteTargetBal(null);
+            setDeleteError(null);
+          }}
         />
       )}
     </div>

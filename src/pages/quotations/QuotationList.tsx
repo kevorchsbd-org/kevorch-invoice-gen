@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { DocumentPreviewModal } from '../../components/documents/DocumentPreviewModal';
 import { SendEmailModal } from '../../components/documents/SendEmailModal';
+import { ConfirmationModal } from '../../components/common/ConfirmationModal';
 import {
   FileText, Plus, Search, Eye, Edit, Trash2, Mail, ArrowRightLeft, Copy, CheckCircle2
 } from 'lucide-react';
@@ -18,6 +19,10 @@ export const QuotationList: React.FC = () => {
   const [selectedDoc, setSelectedDoc] = useState<Quotation | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [isEmailOpen, setIsEmailOpen] = useState(false);
+  const [deleteTargetQuotation, setDeleteTargetQuotation] = useState<Quotation | null>(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [successToast, setSuccessToast] = useState<string | null>(null);
 
   const filteredQuotations = quotations.filter(q => {
@@ -43,18 +48,6 @@ export const QuotationList: React.FC = () => {
     if (!q.items || q.items.length === 0) {
       alert("Add at least one service before converting this quotation to an invoice.");
       return;
-    }
-
-    if (q.status === 'converted' || q.convertedToInvoiceId) {
-      const existingInv = invoices.find(i => i.id === q.convertedToInvoiceId || i.quotationId === q.id);
-      const invRef = existingInv ? existingInv.invoiceNumber : 'existing invoice';
-      if (!confirm(`Quotation ${q.quotationNumber} has already been converted to ${invRef}. Do you want to create another new invoice from this quotation?`)) {
-        return;
-      }
-    } else {
-      if (!confirm(`Convert Quotation ${q.quotationNumber} into a formal Invoice?`)) {
-        return;
-      }
     }
 
     try {
@@ -87,9 +80,26 @@ export const QuotationList: React.FC = () => {
     setTimeout(() => setSuccessToast(null), 3000);
   };
 
-  const handleDelete = (id: string, num: string) => {
-    if (confirm(`Are you sure you want to delete quotation ${num}?`)) {
-      deleteQuotation(id);
+  const promptDeleteQuotation = (q: Quotation) => {
+    setDeleteTargetQuotation(q);
+    setIsDeleteModalOpen(true);
+    setDeleteError(null);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTargetQuotation) return;
+    setIsDeleting(true);
+    setDeleteError(null);
+    try {
+      await deleteQuotation(deleteTargetQuotation.id);
+      setIsDeleting(false);
+      setIsDeleteModalOpen(false);
+      setSuccessToast(`Quotation ${deleteTargetQuotation.quotationNumber} deleted successfully.`);
+      setTimeout(() => setSuccessToast(null), 4000);
+      setDeleteTargetQuotation(null);
+    } catch (err: any) {
+      setIsDeleting(false);
+      setDeleteError(err.message || 'Failed to delete quotation.');
     }
   };
 
@@ -218,7 +228,7 @@ export const QuotationList: React.FC = () => {
                       </button>
 
                       <button
-                        onClick={() => handleDelete(q.id, q.quotationNumber)}
+                        onClick={() => promptDeleteQuotation(q)}
                         className="p-1.5 rounded-lg text-gray-400 hover:text-red-600"
                         title="Delete Quotation"
                       >
@@ -258,6 +268,27 @@ export const QuotationList: React.FC = () => {
           onClose={() => setIsEmailOpen(false)}
           document={selectedDoc}
           documentType="Quotation"
+        />
+      )}
+
+      {/* Reusable Delete Quotation Confirmation Modal */}
+      {deleteTargetQuotation && (
+        <ConfirmationModal
+          open={isDeleteModalOpen}
+          title="Delete Quotation?"
+          recordLabel={deleteTargetQuotation.quotationNumber}
+          description="Are you sure you want to delete quotation"
+          warning="This action cannot be undone."
+          confirmText="Delete Quotation"
+          cancelText="Cancel"
+          loading={isDeleting}
+          error={deleteError}
+          onConfirm={handleConfirmDelete}
+          onCancel={() => {
+            setIsDeleteModalOpen(false);
+            setDeleteTargetQuotation(null);
+            setDeleteError(null);
+          }}
         />
       )}
     </div>

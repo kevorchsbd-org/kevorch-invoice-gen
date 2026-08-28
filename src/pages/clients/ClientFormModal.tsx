@@ -23,6 +23,7 @@ export const ClientFormModal: React.FC<ClientFormModalProps> = ({
     companyName: '',
     mobile: '',
     email: '',
+    ccEmails: '',
     address: '',
     city: 'Coimbatore',
     state: 'Tamil Nadu',
@@ -54,6 +55,7 @@ export const ClientFormModal: React.FC<ClientFormModalProps> = ({
           companyName: clientToEdit.companyName || '',
           mobile: clientToEdit.mobile || '',
           email: clientToEdit.email || '',
+          ccEmails: Array.isArray(clientToEdit.ccEmails) ? clientToEdit.ccEmails.join(', ') : '',
           address: clientToEdit.address || '',
           city: clientToEdit.city || 'Coimbatore',
           state: clientToEdit.state || 'Tamil Nadu',
@@ -67,6 +69,7 @@ export const ClientFormModal: React.FC<ClientFormModalProps> = ({
           companyName: '',
           mobile: '',
           email: '',
+          ccEmails: '',
           address: '',
           city: 'Coimbatore',
           state: 'Tamil Nadu',
@@ -90,17 +93,26 @@ export const ClientFormModal: React.FC<ClientFormModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      const parsedCcEmails = typeof formData.ccEmails === 'string'
+        ? formData.ccEmails.split(',').map(s => s.trim()).filter(Boolean)
+        : formData.ccEmails || [];
+
+      const payload = {
+        ...formData,
+        ccEmails: parsedCcEmails
+      };
+
       if (clientToEdit) {
         if (selectedFile) {
           await saveClientAsset(clientToEdit.id, selectedFile, selectedFile.name);
-          formData.logoUrl = 'indexeddb';
+          payload.logoUrl = 'indexeddb';
         }
-        await updateClient(clientToEdit.id, formData);
+        await updateClient(clientToEdit.id, payload);
       } else {
         if (selectedFile) {
-          formData.logoUrl = 'indexeddb';
+          payload.logoUrl = 'indexeddb';
         }
-        const newClient = await addClient(formData);
+        const newClient = await addClient(payload);
         if (selectedFile && newClient?.id) {
           await saveClientAsset(newClient.id, selectedFile, selectedFile.name);
           await updateClient(newClient.id, { logoUrl: 'indexeddb' });
@@ -177,6 +189,20 @@ export const ClientFormModal: React.FC<ClientFormModalProps> = ({
               placeholder="client@company.com"
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              className="w-full px-3 py-2 text-xs bg-gray-50 dark:bg-[#252525] border border-gray-200 dark:border-[#333] rounded-lg focus:ring-1 focus:ring-[#E31B23] focus:border-[#E31B23]"
+            />
+          </div>
+
+          <div className="sm:col-span-2">
+            <label className="text-gray-700 dark:text-gray-300 font-bold mb-1 flex items-center space-x-1">
+              <Mail className="w-3.5 h-3.5 text-amber-500" />
+              <span>CC Email Addresses (Optional, comma-separated)</span>
+            </label>
+            <input
+              type="text"
+              placeholder="accounts@example.com, manager@example.com"
+              value={formData.ccEmails}
+              onChange={(e) => setFormData({ ...formData, ccEmails: e.target.value })}
               className="w-full px-3 py-2 text-xs bg-gray-50 dark:bg-[#252525] border border-gray-200 dark:border-[#333] rounded-lg focus:ring-1 focus:ring-[#E31B23] focus:border-[#E31B23]"
             />
           </div>
