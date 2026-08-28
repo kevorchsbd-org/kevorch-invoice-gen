@@ -18,7 +18,7 @@ interface CombinedFileItem {
 }
 
 export const FileLibrary: React.FC = () => {
-  const { files, addFile, deleteFile, clients } = useData();
+  const { files, addFile, deleteFile } = useData();
 
   const [activeCategory, setActiveCategory] = useState<FileCategory | 'All'>('All');
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);

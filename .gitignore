@@ -29,3 +29,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Test Output Artifacts
+playwright-report/
+test-results/
+coverage/
+

@@ -185,7 +185,7 @@ export const InvoicePDF: React.FC<DocumentProps> = ({ invoice }) => {
                         {points.map((pt, pIdx) => (
                           <li key={pIdx} className="flex items-start space-x-1.5 leading-relaxed">
                             <span className="text-black font-bold select-none">•</span>
-                            <span>{pt.replace(/^[•\-\*\s]+/, '')}</span>
+                            <span>{pt.replace(/^[•\-*\s]+/, '')}</span>
                           </li>
                         ))}
                       </ul>
