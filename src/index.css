@@ -10,6 +10,57 @@
   }
 }
 
+@layer components {
+  .page-container {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 font-sans;
+  }
+  .page-header {
+    @apply flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-gray-200/80 dark:border-[#2A2B36] pb-5;
+  }
+  .page-title {
+    @apply text-2xl sm:text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-100;
+  }
+  .page-subtitle {
+    @apply text-sm font-normal text-gray-500 dark:text-gray-400 mt-1;
+  }
+  .section-heading {
+    @apply text-lg font-semibold text-gray-900 dark:text-gray-100;
+  }
+  .card-heading {
+    @apply text-base font-semibold text-gray-900 dark:text-gray-100;
+  }
+  .form-label {
+    @apply block text-[13px] font-medium text-gray-700 dark:text-gray-300 mb-1.5;
+  }
+  .form-input, .form-select {
+    @apply w-full h-10 px-3.5 py-2 text-sm bg-white dark:bg-[#1A1D24] text-gray-900 dark:text-gray-100 border border-gray-200 dark:border-[#30343E] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#E31B23]/20 focus:border-[#E31B23] transition-all placeholder:text-gray-400 dark:placeholder:text-gray-500;
+  }
+  .form-textarea {
+    @apply w-full px-3.5 py-2.5 text-sm bg-white dark:bg-[#1A1D24] text-gray-900 dark:text-gray-100 border border-gray-200 dark:border-[#30343E] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#E31B23]/20 focus:border-[#E31B23] transition-all placeholder:text-gray-400 dark:placeholder:text-gray-500 leading-relaxed;
+  }
+  .btn-primary {
+    @apply h-10 px-4 text-sm font-semibold bg-[#E31B23] hover:bg-red-700 text-white rounded-xl shadow-xs inline-flex items-center justify-center space-x-2 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-secondary {
+    @apply h-10 px-4 text-sm font-semibold bg-white dark:bg-[#1A1D24] hover:bg-gray-50 dark:hover:bg-[#252832] text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-[#30343E] rounded-xl inline-flex items-center justify-center space-x-2 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-danger {
+    @apply h-10 px-4 text-sm font-semibold bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 hover:bg-red-100 border border-red-200 dark:border-red-900/50 rounded-xl inline-flex items-center justify-center space-x-2 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .ui-card {
+    @apply bg-white dark:bg-[#1A1D24] border border-gray-200 dark:border-[#2A2B36] rounded-2xl p-5 sm:p-6 shadow-xs;
+  }
+  .ui-table-container {
+    @apply bg-white dark:bg-[#1A1D24] border border-gray-200 dark:border-[#2A2B36] rounded-2xl overflow-hidden shadow-xs;
+  }
+  .ui-table-th {
+    @apply bg-gray-50 dark:bg-[#20232C] text-gray-500 dark:text-gray-400 text-xs font-semibold uppercase tracking-wider h-11 px-4 text-left border-b border-gray-200 dark:border-[#2A2B36];
+  }
+  .ui-table-td {
+    @apply py-3.5 px-4 text-sm border-b border-gray-100 dark:border-[#252832];
+  }
+}
+
 /* Glassmorphism & Liquid Morphism Custom Utilities */
 @layer utilities {
   .glass-panel {
