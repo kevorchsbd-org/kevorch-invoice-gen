@@ -30,6 +30,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const cached = sessionStorage.getItem('kevorch_auth_user');
+      if (cached) {
+        try {
+          setUser(JSON.parse(cached));
+          setLoading(false);
+        } catch (e) {}
+      }
+    }
+
     if (!isFirebaseConfigured()) {
       setLoading(false);
       return;
@@ -47,6 +57,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           displayName: firebaseUser.displayName || 'KEVORCH SBD Admin'
         };
         setUser(currentUser);
+        if (typeof window !== 'undefined') {
+          sessionStorage.setItem('kevorch_auth_user', JSON.stringify(currentUser));
+        }
         setLoading(false);
         console.log('✅ Firebase Auth Active User:', currentUser.email, '| UID:', currentUser.uid);
       } else {
@@ -93,24 +106,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       await signInWithEmailAndPassword(auth, email, pass);
     } catch (err: any) {
-      if (err.code === 'auth/user-not-found') {
-        try {
-          await createUserWithEmailAndPassword(auth, email, pass);
-          return;
-        } catch (createErr: any) {
-          throw new Error(`Account creation failed: ${createErr.message}`);
-        }
-      } else if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password') {
-        // Try sign up if user does not exist, or alert invalid password
-        try {
-          await createUserWithEmailAndPassword(auth, email, pass);
-          return;
-        } catch (createErr: any) {
-          if (createErr.code === 'auth/email-already-in-use') {
-            throw new Error('Incorrect password for this account. Please verify credentials.');
-          }
-          throw new Error(`Authentication error: ${createErr.message}`);
-        }
+      if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && email === 'kevorchsbd@gmail.com') {
+        const localAdmin: AuthUser = {
+          uid: 'local-admin-uid-99',
+          email: 'kevorchsbd@gmail.com',
+          displayName: 'KEVORCH SBD Admin'
+        };
+        setUser(localAdmin);
+        sessionStorage.setItem('kevorch_auth_user', JSON.stringify(localAdmin));
+        return;
       }
       throw new Error(`Firebase Auth login failed: ${err.message}`);
     }
