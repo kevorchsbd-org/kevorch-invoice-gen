@@ -51,6 +51,7 @@ interface DataContextType {
   // Payment Actions
   addPayment: (paymentData: Omit<Payment, 'id' | 'createdAt'>) => Promise<Payment>;
   deletePayment: (id: string) => Promise<void>;
+  reconcileAndCleanupPayments: (selectedPaymentIds: string[], auditReasons?: Record<string, string>) => Promise<void>;
 
   // File Actions
   addFile: (fileData: Omit<FileRecord, 'id' | 'uploadedAt'>) => Promise<FileRecord>;
@@ -180,6 +181,15 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }));
   };
 
+  const getSafeTime = (dateVal: any): number => {
+    if (!dateVal) return 0;
+    if (typeof dateVal === 'object' && 'seconds' in dateVal) {
+      return dateVal.seconds * 1000;
+    }
+    const time = new Date(dateVal).getTime();
+    return isNaN(time) ? 0 : time;
+  };
+
   // Sync to Firestore in real-time when Firebase is configured & user is authenticated
   useEffect(() => {
     if (!isFirebaseConfigured() || typeof auth === 'undefined' || !auth) {
@@ -189,15 +199,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     let unsubscribers: (() => void)[] = [];
 
-    const authUnsubscribe = onAuthStateChanged(auth, (user: FirebaseUser | null) => {
-      // Clean previous listeners if user logs out or switches
+    const setupListeners = () => {
       unsubscribers.forEach(unsub => unsub());
       unsubscribers = [];
-
-      if (!user) {
-        setIsLoading(false);
-        return;
-      }
 
       try {
         // 1. Clients
@@ -205,9 +209,13 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
           onSnapshot(collection(db, 'clients'), (snapshot) => {
             const list: Client[] = [];
             snapshot.forEach(doc => list.push({ ...doc.data(), id: doc.id } as Client));
-            setClients(list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+            setClients(list.sort((a, b) => getSafeTime(b.createdAt) - getSafeTime(a.createdAt)));
             recordReads(snapshot.docs.length);
-          }, err => console.warn('Clients snapshot listener warning:', err))
+            setIsLoading(false);
+          }, err => {
+            console.warn('Clients snapshot listener warning:', err);
+            setIsLoading(false);
+          })
         );
 
         // 2. Quotations
@@ -215,8 +223,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
           onSnapshot(collection(db, 'quotations'), (snapshot) => {
             const list: Quotation[] = [];
             snapshot.forEach(doc => list.push({ ...doc.data(), id: doc.id } as Quotation));
-            setQuotations(list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+            setQuotations(list.sort((a, b) => getSafeTime(b.createdAt) - getSafeTime(a.createdAt)));
             recordReads(snapshot.docs.length);
+            setIsLoading(false);
           }, err => console.warn('Quotations snapshot listener warning:', err))
         );
 
@@ -225,8 +234,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
           onSnapshot(collection(db, 'invoices'), (snapshot) => {
             const list: Invoice[] = [];
             snapshot.forEach(doc => list.push({ ...doc.data(), id: doc.id } as Invoice));
-            setInvoices(list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+            setInvoices(list.sort((a, b) => getSafeTime(b.createdAt) - getSafeTime(a.createdAt)));
             recordReads(snapshot.docs.length);
+            setIsLoading(false);
           }, err => console.warn('Invoices snapshot listener warning:', err))
         );
 
@@ -235,8 +245,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
           onSnapshot(collection(db, 'balanceInvoices'), (snapshot) => {
             const list: BalanceInvoice[] = [];
             snapshot.forEach(doc => list.push({ ...doc.data(), id: doc.id } as BalanceInvoice));
-            setBalanceInvoices(list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+            setBalanceInvoices(list.sort((a, b) => getSafeTime(b.createdAt) - getSafeTime(a.createdAt)));
             recordReads(snapshot.docs.length);
+            setIsLoading(false);
           }, err => console.warn('BalanceInvoices snapshot listener warning:', err))
         );
 
@@ -245,8 +256,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
           onSnapshot(collection(db, 'payments'), (snapshot) => {
             const list: Payment[] = [];
             snapshot.forEach(doc => list.push({ ...doc.data(), id: doc.id } as Payment));
-            setPayments(list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+            setPayments(list.sort((a, b) => getSafeTime(b.createdAt) - getSafeTime(a.createdAt)));
             recordReads(snapshot.docs.length);
+            setIsLoading(false);
           }, err => console.warn('Payments snapshot listener warning:', err))
         );
 
@@ -255,8 +267,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
           onSnapshot(collection(db, 'files'), (snapshot) => {
             const list: FileRecord[] = [];
             snapshot.forEach(doc => list.push({ ...doc.data(), id: doc.id } as FileRecord));
-            setFiles(list.sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime()));
+            setFiles(list.sort((a, b) => getSafeTime(b.uploadedAt) - getSafeTime(a.uploadedAt)));
             recordReads(snapshot.docs.length);
+            setIsLoading(false);
           }, err => console.warn('Files snapshot listener warning:', err))
         );
 
@@ -265,8 +278,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
           onSnapshot(collection(db, 'activityLogs'), (snapshot) => {
             const list: ActivityLog[] = [];
             snapshot.forEach(doc => list.push({ ...doc.data(), id: doc.id } as ActivityLog));
-            setActivityLogs(list.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
+            setActivityLogs(list.sort((a, b) => getSafeTime(b.timestamp) - getSafeTime(a.timestamp)));
             recordReads(snapshot.docs.length);
+            setIsLoading(false);
           }, err => console.warn('ActivityLogs snapshot listener warning:', err))
         );
 
@@ -275,8 +289,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
           onSnapshot(collection(db, 'emailLogs'), (snapshot) => {
             const list: EmailLog[] = [];
             snapshot.forEach(doc => list.push({ ...doc.data(), id: doc.id } as EmailLog));
-            setEmailLogs(list.sort((a, b) => new Date(b.sentDate).getTime() - new Date(a.sentDate).getTime()));
+            setEmailLogs(list.sort((a, b) => getSafeTime(b.sentDate) - getSafeTime(a.sentDate)));
             recordReads(snapshot.docs.length);
+            setIsLoading(false);
           }, err => console.warn('EmailLogs snapshot listener warning:', err))
         );
 
@@ -287,12 +302,22 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
               setSettings(snapshot.data() as AppSettings);
             }
             recordReads(1);
+            setIsLoading(false);
           }, err => console.warn('Settings snapshot listener warning:', err))
         );
-
-        setIsLoading(false);
       } catch (err: any) {
         console.error('Firestore listener error:', err);
+        setIsLoading(false);
+      }
+    };
+
+    const authUnsubscribe = onAuthStateChanged(auth, (user: FirebaseUser | null) => {
+      if (user) {
+        setupListeners();
+      } else {
+        // Unsubscribe listeners when user logs out
+        unsubscribers.forEach(unsub => unsub());
+        unsubscribers = [];
         setIsLoading(false);
       }
     });
@@ -702,51 +727,86 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Payment Actions & Automatic Calculation Logic
   const addPayment = async (paymentData: Omit<Payment, 'id' | 'createdAt'>): Promise<Payment> => {
+    const targetInvoice = invoices.find(inv => inv.id === paymentData.invoiceId);
+    if (!targetInvoice) {
+      throw new Error('Target invoice not found.');
+    }
+
+    const numAmount = Number(paymentData.amount);
+    if (isNaN(numAmount) || numAmount <= 0) {
+      throw new Error('Payment amount must be a valid number greater than 0.');
+    }
+
+    // Ledger source of truth check for remaining balance
+    const existingPayments = payments.filter(p => p.invoiceId === paymentData.invoiceId);
+    const ledgerPaidBefore = existingPayments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
+    const actualBalanceBefore = Math.max(0, targetInvoice.totalAmount - ledgerPaidBefore);
+
+    if (numAmount > actualBalanceBefore + 0.01) { // 1 cent buffer for float rounding
+      throw new Error('Payment amount cannot exceed the remaining invoice balance.');
+    }
+
+    // Deduplication check by operationToken or recent identical submission
+    if (paymentData.operationToken) {
+      const existingTokenMatch = payments.find(p => p.operationToken === paymentData.operationToken);
+      if (existingTokenMatch) {
+        console.warn(`[Payment Deduplication] Duplicate operation token ignored: ${paymentData.operationToken}`);
+        return existingTokenMatch;
+      }
+    }
+
+    const recentDuplicate = payments.find(p => {
+      if (p.invoiceId !== paymentData.invoiceId) return false;
+      if (p.amount !== numAmount) return false;
+      if (paymentData.referenceNumber && p.referenceNumber !== paymentData.referenceNumber) return false;
+      const timeDiff = Math.abs(Date.now() - new Date(p.createdAt).getTime());
+      return timeDiff < 4000; // Created within 4 seconds with identical amount
+    });
+
+    if (recentDuplicate) {
+      console.warn(`[Payment Deduplication] Duplicate payment detected within 4 seconds: ${recentDuplicate.id}`);
+      return recentDuplicate;
+    }
+
     const newPayment: Payment = {
       ...paymentData,
       id: `pay_${Date.now()}`,
       createdAt: new Date().toISOString()
     };
 
-    setPayments(prev => [newPayment, ...prev]);
+    const nextPayments = [newPayment, ...payments];
+    setPayments(nextPayments);
     await persistToFirestore('payments', newPayment.id, newPayment);
 
-    // Recalculate related invoice paid amount & status
-    let updatedInvoiceTarget: Invoice | null = null;
-    setInvoices(prevInvoices => prevInvoices.map(inv => {
-      if (inv.id === paymentData.invoiceId) {
-        const newPaidAmount = inv.paidAmount + Number(paymentData.amount);
-        const newBalanceAmount = Math.max(0, inv.totalAmount - newPaidAmount);
+    // Calculate total paid strictly from payments ledger linked to this invoice
+    const linkedPayments = nextPayments.filter(p => p.invoiceId === paymentData.invoiceId);
+    const newPaidAmount = linkedPayments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
+    const newBalanceAmount = Math.max(0, targetInvoice.totalAmount - newPaidAmount);
 
-        let newStatus: PaymentStatus = 'unpaid';
-        if (newPaidAmount >= inv.totalAmount && inv.totalAmount > 0) {
-          newStatus = 'fully_paid';
-        } else if (newPaidAmount > 0) {
-          newStatus = 'partially_paid';
-        }
-
-        updatedInvoiceTarget = {
-          ...inv,
-          paidAmount: newPaidAmount,
-          balanceAmount: newBalanceAmount,
-          paymentStatus: newStatus,
-          status: newStatus === 'fully_paid' ? 'paid' : inv.status,
-          updatedAt: new Date().toISOString()
-        };
-        return updatedInvoiceTarget;
-      }
-      return inv;
-    }));
-
-    if (updatedInvoiceTarget) {
-      await persistToFirestore('invoices', paymentData.invoiceId, updatedInvoiceTarget);
+    let newStatus: PaymentStatus = 'unpaid';
+    if (newPaidAmount >= targetInvoice.totalAmount && targetInvoice.totalAmount > 0) {
+      newStatus = 'fully_paid';
+    } else if (newPaidAmount > 0) {
+      newStatus = 'partially_paid';
     }
+
+    const updatedInvoiceTarget: Invoice = {
+      ...targetInvoice,
+      paidAmount: newPaidAmount,
+      balanceAmount: newBalanceAmount,
+      paymentStatus: newStatus,
+      status: newStatus === 'fully_paid' ? 'paid' : targetInvoice.status,
+      updatedAt: new Date().toISOString()
+    };
+
+    setInvoices(prevInvoices => prevInvoices.map(inv => inv.id === paymentData.invoiceId ? updatedInvoiceTarget : inv));
+    await persistToFirestore('invoices', paymentData.invoiceId, updatedInvoiceTarget);
 
     await logActivity(
       paymentData.clientId,
       paymentData.clientName,
       'Payment Received',
-      `Recorded ${paymentData.paymentMethod} payment of ₹${paymentData.amount.toLocaleString('en-IN')} for ${paymentData.invoiceNumber} (Ref: ${paymentData.referenceNumber || 'N/A'})`
+      `Recorded ${paymentData.paymentMethod} payment of ₹${numAmount.toLocaleString('en-IN')} for ${paymentData.invoiceNumber} (Ref: ${paymentData.referenceNumber || 'N/A'})`
     );
 
     return newPayment;
@@ -756,38 +816,93 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const targetPayment = payments.find(p => p.id === id);
     if (!targetPayment) return;
 
-    setPayments(prev => prev.filter(p => p.id !== id));
+    const nextPayments = payments.filter(p => p.id !== id);
+    setPayments(nextPayments);
     await removeFromFirestore('payments', id);
 
-    // Re-adjust related invoice amounts
-    let updatedInvoiceTarget: Invoice | null = null;
-    setInvoices(prevInvoices => prevInvoices.map(inv => {
-      if (inv.id === targetPayment.invoiceId) {
-        const newPaidAmount = Math.max(0, inv.paidAmount - targetPayment.amount);
-        const newBalanceAmount = Math.max(0, inv.totalAmount - newPaidAmount);
+    // Re-adjust related invoice amounts based strictly on remaining ledger payments
+    const targetInvoice = invoices.find(inv => inv.id === targetPayment.invoiceId);
+    if (targetInvoice) {
+      const linkedPayments = nextPayments.filter(p => p.invoiceId === targetPayment.invoiceId);
+      const newPaidAmount = linkedPayments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
+      const newBalanceAmount = Math.max(0, targetInvoice.totalAmount - newPaidAmount);
+
+      let newStatus: PaymentStatus = 'unpaid';
+      if (newPaidAmount >= targetInvoice.totalAmount && targetInvoice.totalAmount > 0) {
+        newStatus = 'fully_paid';
+      } else if (newPaidAmount > 0) {
+        newStatus = 'partially_paid';
+      }
+
+      const updatedInvoiceTarget: Invoice = {
+        ...targetInvoice,
+        paidAmount: newPaidAmount,
+        balanceAmount: newBalanceAmount,
+        paymentStatus: newStatus,
+        status: newStatus === 'fully_paid' ? 'paid' : targetInvoice.status,
+        updatedAt: new Date().toISOString()
+      };
+
+      setInvoices(prevInvoices => prevInvoices.map(inv => inv.id === targetInvoice.id ? updatedInvoiceTarget : inv));
+      await persistToFirestore('invoices', targetInvoice.id, updatedInvoiceTarget);
+    }
+  };
+
+  const reconcileAndCleanupPayments = async (selectedPaymentIds: string[], auditReasons: Record<string, string> = {}) => {
+    if (!selectedPaymentIds || selectedPaymentIds.length === 0) return;
+
+    const idsToDeleteSet = new Set(selectedPaymentIds);
+
+    // 1. Find payments being removed and identify affected invoices
+    const targetPayments = payments.filter(p => idsToDeleteSet.has(p.id));
+    const affectedInvoiceIds = new Set<string>(targetPayments.map(p => p.invoiceId));
+
+    // 2. Remove selected payments from state and Firestore
+    const nextPayments = payments.filter(p => !idsToDeleteSet.has(p.id));
+    setPayments(nextPayments);
+
+    for (const pId of selectedPaymentIds) {
+      await removeFromFirestore('payments', pId);
+    }
+
+    // 3. Recalculate each affected invoice from remaining ledger payments
+    for (const invoiceId of affectedInvoiceIds) {
+      const targetInvoice = invoices.find(inv => inv.id === invoiceId);
+      if (targetInvoice) {
+        const remainingPayments = nextPayments.filter(p => p.invoiceId === invoiceId);
+        const newPaidAmount = remainingPayments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
+        const newBalanceAmount = Math.max(0, targetInvoice.totalAmount - newPaidAmount);
 
         let newStatus: PaymentStatus = 'unpaid';
-        if (newPaidAmount >= inv.totalAmount && inv.totalAmount > 0) {
+        if (newPaidAmount >= targetInvoice.totalAmount && targetInvoice.totalAmount > 0) {
           newStatus = 'fully_paid';
         } else if (newPaidAmount > 0) {
           newStatus = 'partially_paid';
         }
 
-        updatedInvoiceTarget = {
-          ...inv,
+        const updatedInvoice: Invoice = {
+          ...targetInvoice,
           paidAmount: newPaidAmount,
           balanceAmount: newBalanceAmount,
           paymentStatus: newStatus,
-          status: newStatus === 'fully_paid' ? 'paid' : inv.status,
+          status: newStatus === 'fully_paid' ? 'paid' : targetInvoice.status,
           updatedAt: new Date().toISOString()
         };
-        return updatedInvoiceTarget;
-      }
-      return inv;
-    }));
 
-    if (updatedInvoiceTarget) {
-      await persistToFirestore('invoices', targetPayment.invoiceId, updatedInvoiceTarget);
+        setInvoices(prevInvoices => prevInvoices.map(inv => inv.id === invoiceId ? updatedInvoice : inv));
+        await persistToFirestore('invoices', invoiceId, updatedInvoice);
+      }
+    }
+
+    // 4. Record activity logs for each cleanup operation
+    for (const p of targetPayments) {
+      const reason = auditReasons[p.id] || 'Confirmed Duplicate Cleanup';
+      await logActivity(
+        p.clientId || 'system',
+        p.clientName || 'System Ledger',
+        'Payment Cleanup',
+        `Reconciled duplicate/orphan payment [${p.id}] of ₹${p.amount.toLocaleString('en-IN')} for ${p.invoiceNumber || 'Unlinked'}. Reason: ${reason}`
+      );
     }
   };
 
@@ -866,7 +981,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       addQuotation, updateQuotation, deleteQuotation, convertQuotationToInvoice,
       addInvoice, updateInvoice, deleteInvoice, createBalanceInvoiceFromInvoice,
       addBalanceInvoice, updateBalanceInvoice, deleteBalanceInvoice,
-      addPayment, deletePayment,
+      addPayment, deletePayment, reconcileAndCleanupPayments,
       addFile, deleteFile,
       addEmailLog,
       updateSettings, toggleTheme, resetAllData, logActivity,

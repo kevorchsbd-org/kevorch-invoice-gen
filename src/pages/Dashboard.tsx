@@ -25,9 +25,9 @@ export const Dashboard: React.FC = () => {
   const totalQuotationsCount = quotations.length;
   const totalInvoicesCount = invoices.length;
 
-  const totalInvoiceValue = invoices.reduce((sum, i) => sum + i.totalAmount, 0);
-  const totalAmountReceived = payments.reduce((sum, p) => sum + p.amount, 0);
-  const totalBalanceOutstanding = Math.max(0, totalInvoiceValue - totalAmountReceived);
+  const totalInvoiceValue = invoices.reduce((sum, i) => sum + Number(i.totalAmount || 0), 0);
+  const totalAmountReceived = invoices.reduce((sum, i) => sum + Number(i.paidAmount || 0), 0);
+  const totalBalanceOutstanding = Math.max(0, invoices.reduce((sum, i) => sum + Number(i.balanceAmount || 0), 0));
 
   const pendingPaymentsCount = invoices.filter(i => i.paymentStatus !== 'fully_paid').length;
   const fullyPaidCount = invoices.filter(i => i.paymentStatus === 'fully_paid').length;

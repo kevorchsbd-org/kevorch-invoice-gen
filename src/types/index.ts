@@ -121,6 +121,7 @@ export interface Payment {
   paymentMethod: PaymentMethod;
   referenceNumber: string;
   note?: string;
+  operationToken?: string;
   createdAt: string;
 }
 

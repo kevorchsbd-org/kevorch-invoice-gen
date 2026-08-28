@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useData } from '../../context/DataContext';
 import { RecordPaymentModal } from './RecordPaymentModal';
+import { PaymentReconciliationModal } from './PaymentReconciliationModal';
 import { useSearchParams } from 'react-router-dom';
 import {
-  IndianRupee, Plus, Search, Trash2, Calendar, FileText, ArrowUpRight
+  IndianRupee, Plus, Search, Trash2, Calendar, FileText, ArrowUpRight, ShieldAlert
 } from 'lucide-react';
  
 export const PaymentList: React.FC = () => {
@@ -12,6 +13,7 @@ export const PaymentList: React.FC = () => {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isReconcileOpen, setIsReconcileOpen] = useState(false);
 
   useEffect(() => {
     if (searchParams.get('action') === 'new') {
@@ -49,13 +51,23 @@ export const PaymentList: React.FC = () => {
           </p>
         </div>
 
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-md transition flex items-center justify-center space-x-2"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Record New Payment</span>
-        </button>
+        <div className="flex items-center space-x-3">
+          <button
+            onClick={() => setIsReconcileOpen(true)}
+            className="px-4 py-2.5 bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-900/50 hover:bg-amber-100 text-xs font-bold rounded-xl shadow-xs transition flex items-center justify-center space-x-2"
+          >
+            <ShieldAlert className="w-4 h-4 text-amber-600" />
+            <span>Reconciliation & Cleanup</span>
+          </button>
+
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-md transition flex items-center justify-center space-x-2"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Record New Payment</span>
+          </button>
+        </div>
       </div>
 
       {/* Summary KPI Banner */}
@@ -143,10 +155,15 @@ export const PaymentList: React.FC = () => {
         )}
       </div>
 
-      {/* Modal */}
+      {/* Modals */}
       <RecordPaymentModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
+      />
+
+      <PaymentReconciliationModal
+        isOpen={isReconcileOpen}
+        onClose={() => setIsReconcileOpen(false)}
       />
     </div>
   );

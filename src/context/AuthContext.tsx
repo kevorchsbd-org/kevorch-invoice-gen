@@ -35,7 +35,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
 
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser: User | null) => {
+    let isSubscribed = true;
+
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: User | null) => {
+      if (!isSubscribed) return;
+
       if (firebaseUser) {
         const currentUser: AuthUser = {
           uid: firebaseUser.uid,
@@ -43,17 +47,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           displayName: firebaseUser.displayName || 'KEVORCH SBD Admin'
         };
         setUser(currentUser);
+        setLoading(false);
         console.log('✅ Firebase Auth Active User:', currentUser.email, '| UID:', currentUser.uid);
       } else {
+        // On localhost, attempt auto-login with default admin credentials if unauthenticated
+        const isLocalhost = typeof window !== 'undefined' && (
+          window.location.hostname === 'localhost' ||
+          window.location.hostname === '127.0.0.1'
+        );
+
+        if (isLocalhost) {
+          try {
+            console.log('🔄 Localhost auto-authenticating with default admin credentials...');
+            await signInWithEmailAndPassword(auth, 'kevorchsbd@gmail.com', 'kevorch123');
+            return; // onAuthStateChanged will trigger again with user
+          } catch (autoErr) {
+            console.warn('Localhost auto-auth failed, manual login required:', autoErr);
+          }
+        }
+
         setUser(null);
+        setLoading(false);
       }
-      setLoading(false);
     }, (err) => {
       console.error('Firebase Auth State Error:', err);
       setLoading(false);
     });
 
-    return () => unsubscribe();
+    return () => {
+      isSubscribed = false;
+      unsubscribe();
+    };
   }, []);
 
   const login = async (email: string, pass: string) => {
@@ -69,12 +93,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       await signInWithEmailAndPassword(auth, email, pass);
     } catch (err: any) {
-      if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
+      if (err.code === 'auth/user-not-found') {
         try {
           await createUserWithEmailAndPassword(auth, email, pass);
           return;
         } catch (createErr: any) {
-          throw new Error(`Firebase Auth login/signup failed: ${createErr.message}`);
+          throw new Error(`Account creation failed: ${createErr.message}`);
+        }
+      } else if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password') {
+        // Try sign up if user does not exist, or alert invalid password
+        try {
+          await createUserWithEmailAndPassword(auth, email, pass);
+          return;
+        } catch (createErr: any) {
+          if (createErr.code === 'auth/email-already-in-use') {
+            throw new Error('Incorrect password for this account. Please verify credentials.');
+          }
+          throw new Error(`Authentication error: ${createErr.message}`);
         }
       }
       throw new Error(`Firebase Auth login failed: ${err.message}`);
