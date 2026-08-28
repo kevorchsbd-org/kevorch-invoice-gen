@@ -21,7 +21,7 @@ export const Header: React.FC = () => {
             className="flex items-center space-x-3 cursor-pointer" 
             onClick={() => navigate('/dashboard')}
           >
-            <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center p-1.5 shadow-lg border border-white/50 relative overflow-hidden group">
+            <div className="w-10 h-10 bg-black rounded-xl flex items-center justify-center p-1.5 shadow-lg border border-white/20 relative overflow-hidden group">
               <img src="/logoicon3.png" alt="KEVORCH Logo" className="w-full h-full object-contain relative z-10 transition-transform duration-300 group-hover:scale-110" />
             </div>
             <div>
