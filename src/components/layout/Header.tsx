@@ -25,7 +25,7 @@ export const Header: React.FC = () => {
               <img src="/logoicon3.png" alt="KEVORCH Logo" className="w-full h-full object-contain relative z-10 transition-transform duration-300 group-hover:scale-110" />
             </div>
             <div>
-              <img src="/whitelogo.png" alt="KEVORCH SBD" className="h-7 w-auto object-contain drop-shadow-xs" />
+              <img src="/whitelogo.png" alt="KEVORCH SBD" className="h-9 sm:h-10 w-auto object-contain drop-shadow-xs" />
             </div>
           </motion.div>
 
