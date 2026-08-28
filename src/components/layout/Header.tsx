@@ -21,9 +21,8 @@ export const Header: React.FC = () => {
             className="flex items-center space-x-3 cursor-pointer" 
             onClick={() => navigate('/dashboard')}
           >
-            <div className="w-10 h-10 bg-white text-[#E31B23] rounded-xl flex items-center justify-center font-black text-xl shadow-lg border border-white/50 relative overflow-hidden group">
-              <span className="relative z-10">K</span>
-              <div className="absolute inset-0 bg-gradient-to-tr from-red-100 to-white opacity-0 group-hover:opacity-100 transition duration-300"></div>
+            <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center p-1.5 shadow-lg border border-white/50 relative overflow-hidden group">
+              <img src="/logoicon3.png" alt="KEVORCH Logo" className="w-full h-full object-contain relative z-10 transition-transform duration-300 group-hover:scale-110" />
             </div>
             <div>
               <div className="flex items-center space-x-2">
