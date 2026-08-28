@@ -6,13 +6,14 @@ import { StatusBadge } from '../../components/common/StatusBadge';
 import { DocumentPreviewModal } from '../../components/documents/DocumentPreviewModal';
 import { SendEmailModal } from '../../components/documents/SendEmailModal';
 import { RecordPaymentModal } from '../payments/RecordPaymentModal';
+import { DeleteInvoiceModal } from './DeleteInvoiceModal';
 import {
   CreditCard, Plus, Search, Eye, Edit, Trash2, Mail, Scale, IndianRupee, CheckCircle2
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 export const InvoiceList: React.FC = () => {
-  const { invoices, deleteInvoice, createBalanceInvoiceFromInvoice } = useData();
+  const { invoices, createBalanceInvoiceFromInvoice } = useData();
   const navigate = useNavigate();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -20,6 +21,8 @@ export const InvoiceList: React.FC = () => {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [isEmailOpen, setIsEmailOpen] = useState(false);
   const [paymentInvoice, setPaymentInvoice] = useState<Invoice | null>(null);
+  const [deleteTargetInvoice, setDeleteTargetInvoice] = useState<Invoice | null>(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [successToast, setSuccessToast] = useState<string | null>(null);
 
   const filteredInvoices = invoices.filter(inv => {
@@ -52,10 +55,14 @@ export const InvoiceList: React.FC = () => {
     setTimeout(() => setSuccessToast(null), 4000);
   };
 
-  const handleDelete = (id: string, num: string) => {
-    if (confirm(`Are you sure you want to delete invoice ${num}?`)) {
-      deleteInvoice(id);
-    }
+  const promptDeleteInvoice = (inv: Invoice) => {
+    setDeleteTargetInvoice(inv);
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleDeleteSuccess = (invoiceNumber: string) => {
+    setSuccessToast(`Invoice ${invoiceNumber} deleted successfully.`);
+    setTimeout(() => setSuccessToast(null), 4000);
   };
 
   return (
@@ -67,8 +74,8 @@ export const InvoiceList: React.FC = () => {
             <CheckCircle2 className="w-5 h-5" />
             <span>{successToast}</span>
           </div>
-          <button onClick={() => navigate('/balance-invoices')} className="underline text-emerald-100 hover:text-white">
-            View Balance Invoices →
+          <button onClick={() => setSuccessToast(null)} className="underline text-emerald-100 hover:text-white">
+            Dismiss
           </button>
         </div>
       )}
@@ -96,7 +103,7 @@ export const InvoiceList: React.FC = () => {
         <Search className="w-5 h-5 text-gray-400" />
         <input
           type="text"
-          placeholder="Search by invoice number, client name, or company..."
+          placeholder="Search invoices by invoice number, client name, or company..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="w-full text-xs bg-transparent focus:outline-none text-gray-900 dark:text-gray-100"
@@ -111,80 +118,79 @@ export const InvoiceList: React.FC = () => {
               <tr>
                 <th className="py-3 px-4">Invoice #</th>
                 <th className="py-3 px-4">Client</th>
-                <th className="py-3 px-4">Date / Due</th>
-                <th className="py-3 px-4 text-right">Total Amount</th>
-                <th className="py-3 px-4 text-right">Paid Amount</th>
-                <th className="py-3 px-4 text-right">Balance Due</th>
-                <th className="py-3 px-4 text-center">Status</th>
+                <th className="py-3 px-4">Invoice Date</th>
+                <th className="py-3 px-4">Due Date</th>
+                <th className="py-3 px-4 text-right">Total Amount (₹)</th>
+                <th className="py-3 px-4 text-right">Paid Amount (₹)</th>
+                <th className="py-3 px-4 text-right">Balance Due (₹)</th>
+                <th className="py-3 px-4 text-center">Payment Status</th>
                 <th className="py-3 px-4 text-center">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-[#2A2A2A]">
               {filteredInvoices.map((inv) => (
-                <tr key={inv.id} className="hover:bg-gray-50/80 dark:hover:bg-[#222] transition">
-                  <td className="py-3.5 px-4 font-bold text-gray-900 dark:text-gray-100">
+                <tr key={inv.id} className="hover:bg-gray-50/80 dark:hover:bg-[#252525] transition">
+                  <td className="py-3.5 px-4 font-bold text-[#E31B23]">
                     {inv.invoiceNumber}
                   </td>
                   <td className="py-3.5 px-4">
-                    <p className="font-bold text-gray-800 dark:text-gray-200">{inv.client.name}</p>
-                    <p className="text-[10px] text-gray-400">{inv.client.companyName}</p>
+                    <div className="font-bold text-gray-900 dark:text-gray-100">{inv.client.name}</div>
+                    <div className="text-[10px] text-gray-400">{inv.client.companyName}</div>
                   </td>
-                  <td className="py-3.5 px-4 text-gray-500">
-                    <p className="font-medium text-gray-800 dark:text-gray-200">{inv.invoiceDate}</p>
-                    <p className="text-[10px] text-gray-400">Due: {inv.dueDate}</p>
+                  <td className="py-3.5 px-4 text-gray-500 dark:text-gray-400">
+                    {inv.invoiceDate}
                   </td>
-                  <td className="py-3.5 px-4 text-right font-black text-gray-900 dark:text-gray-100">
+                  <td className="py-3.5 px-4 text-gray-500 dark:text-gray-400">
+                    {inv.dueDate}
+                  </td>
+                  <td className="py-3.5 px-4 text-right font-extrabold text-gray-900 dark:text-gray-100">
                     ₹{inv.totalAmount.toLocaleString('en-IN')}
                   </td>
-                  <td className="py-3.5 px-4 text-right font-bold text-emerald-600">
+                  <td className="py-3.5 px-4 text-right font-bold text-emerald-600 dark:text-emerald-400">
                     ₹{inv.paidAmount.toLocaleString('en-IN')}
                   </td>
                   <td className="py-3.5 px-4 text-right font-extrabold text-[#E31B23]">
                     ₹{inv.balanceAmount.toLocaleString('en-IN')}
                   </td>
                   <td className="py-3.5 px-4 text-center">
-                    <StatusBadge status={inv.paymentStatus} type="payment" />
+                    <StatusBadge status={inv.paymentStatus} />
                   </td>
                   <td className="py-3.5 px-4 text-center">
                     <div className="flex items-center justify-center space-x-1">
                       <button
                         onClick={() => handlePreview(inv)}
-                        className="p-1.5 rounded-lg text-gray-500 hover:text-[#E31B23] hover:bg-red-50 dark:hover:bg-red-950/30"
-                        title="Preview / Print PDF"
+                        className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+                        title="Preview & Print PDF"
                       >
-                        <Eye className="w-4 h-4" />
+                        <Eye className="w-3.5 h-3.5" />
                       </button>
 
                       <button
                         onClick={() => handleEmail(inv)}
-                        className="p-1.5 rounded-lg text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30"
+                        className="p-1.5 rounded-lg text-gray-400 hover:text-[#E31B23]"
                         title="Send Email"
                       >
-                        <Mail className="w-4 h-4" />
+                        <Mail className="w-3.5 h-3.5" />
                       </button>
 
-                      {/* Quick Record Payment Action */}
-                      {inv.paymentStatus !== 'fully_paid' && (
-                        <button
-                          onClick={() => setPaymentInvoice(inv)}
-                          className="p-1.5 rounded-lg text-emerald-700 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 font-bold flex items-center space-x-1"
-                          title="Record Payment"
-                        >
-                          <IndianRupee className="w-3.5 h-3.5" />
-                          <span className="text-[10px] hidden xl:inline">Pay</span>
-                        </button>
-                      )}
+                      {inv.balanceAmount > 0 && (
+                        <>
+                          <button
+                            onClick={() => setPaymentInvoice(inv)}
+                            className="p-1.5 rounded-lg text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
+                            title="Record Payment"
+                          >
+                            <IndianRupee className="w-3.5 h-3.5" />
+                          </button>
 
-                      {/* Create Balance Invoice Trigger */}
-                      {inv.balanceAmount > 0 && inv.paidAmount > 0 && (
-                        <button
-                          onClick={() => handleCreateBalanceInvoice(inv)}
-                          className="p-1.5 rounded-lg text-orange-700 bg-orange-50 hover:bg-orange-100 dark:bg-orange-950/40 font-bold flex items-center space-x-1"
-                          title="Create Balance Invoice"
-                        >
-                          <Scale className="w-3.5 h-3.5" />
-                          <span className="text-[10px] hidden xl:inline">Bal Inv</span>
-                        </button>
+                          <button
+                            onClick={() => handleCreateBalanceInvoice(inv)}
+                            className="p-1.5 rounded-lg text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-950/30"
+                            title="Generate Balance Invoice"
+                          >
+                            <Scale className="w-3.5 h-3.5" />
+                          </button>
+                        </>
                       )}
 
                       <button
@@ -196,7 +202,7 @@ export const InvoiceList: React.FC = () => {
                       </button>
 
                       <button
-                        onClick={() => handleDelete(inv.id, inv.invoiceNumber)}
+                        onClick={() => promptDeleteInvoice(inv)}
                         className="p-1.5 rounded-lg text-gray-400 hover:text-red-600"
                         title="Delete Invoice"
                       >
@@ -209,14 +215,6 @@ export const InvoiceList: React.FC = () => {
             </tbody>
           </table>
         </div>
-
-        {filteredInvoices.length === 0 && (
-          <div className="p-12 text-center space-y-3">
-            <CreditCard className="w-12 h-12 text-gray-300 mx-auto" />
-            <h3 className="text-base font-bold text-gray-800 dark:text-gray-200">No Invoices Found</h3>
-            <p className="text-xs text-gray-400">Click "Create New Invoice" to generate an invoice.</p>
-          </div>
-        )}
       </div>
 
       {/* Document Preview Modal */}
@@ -247,6 +245,17 @@ export const InvoiceList: React.FC = () => {
           preselectedInvoice={paymentInvoice}
         />
       )}
+
+      {/* Custom Delete Confirmation Modal */}
+      <DeleteInvoiceModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => {
+          setIsDeleteModalOpen(false);
+          setDeleteTargetInvoice(null);
+        }}
+        invoice={deleteTargetInvoice}
+        onSuccess={handleDeleteSuccess}
+      />
     </div>
   );
 };
