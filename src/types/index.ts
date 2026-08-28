@@ -35,6 +35,8 @@ export interface ServiceItem {
   id: string;
   serviceName: string;
   description: string;
+  quantity?: number;
+  rate?: number;
   amount: number;
 }
 

@@ -11,7 +11,7 @@ import {
 import confetti from 'canvas-confetti';
 
 export const QuotationList: React.FC = () => {
-  const { quotations, deleteQuotation, convertQuotationToInvoice, addQuotation } = useData();
+  const { quotations, invoices, deleteQuotation, convertQuotationToInvoice, addQuotation } = useData();
   const navigate = useNavigate();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -40,11 +40,30 @@ export const QuotationList: React.FC = () => {
   };
 
   const handleConvertToInvoice = async (q: Quotation) => {
-    if (confirm(`Convert Quotation ${q.quotationNumber} into a formal Invoice?`)) {
+    if (!q.items || q.items.length === 0) {
+      alert("Add at least one service before converting this quotation to an invoice.");
+      return;
+    }
+
+    if (q.status === 'converted' || q.convertedToInvoiceId) {
+      const existingInv = invoices.find(i => i.id === q.convertedToInvoiceId || i.quotationId === q.id);
+      const invRef = existingInv ? existingInv.invoiceNumber : 'existing invoice';
+      if (!confirm(`Quotation ${q.quotationNumber} has already been converted to ${invRef}. Do you want to create another new invoice from this quotation?`)) {
+        return;
+      }
+    } else {
+      if (!confirm(`Convert Quotation ${q.quotationNumber} into a formal Invoice?`)) {
+        return;
+      }
+    }
+
+    try {
       const createdInvoice = await convertQuotationToInvoice(q.id);
       confetti({ particleCount: 60, spread: 70, origin: { y: 0.6 } });
       setSuccessToast(`Quotation ${q.quotationNumber} successfully converted to Invoice ${createdInvoice.invoiceNumber}!`);
       setTimeout(() => setSuccessToast(null), 4000);
+    } catch (err: any) {
+      alert(err.message || 'Quotation conversion failed.');
     }
   };
 

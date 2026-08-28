@@ -503,11 +503,32 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const convertQuotationToInvoice = async (quotationId: string): Promise<Invoice> => {
     const quote = quotations.find(q => q.id === quotationId);
-    if (!quote) throw new Error("Quotation not found");
+    if (!quote) {
+      throw new Error("Quotation not found.");
+    }
+
+    if (!quote.items || quote.items.length === 0) {
+      throw new Error("Add at least one service before converting this quotation to an invoice.");
+    }
 
     const invNum = `${settings.invoice.prefix}${settings.invoice.nextNumber}`;
     const today = new Date().toISOString().split('T')[0];
     const dueDate = new Date(Date.now() + 15 * 86400000).toISOString().split('T')[0];
+
+    // Deep copy items, client, and fromDetails to guarantee snapshot independence
+    const snapshotItems = quote.items.map(item => ({
+      ...item,
+      amount: Number(item.amount) || (Number(item.quantity || 1) * Number(item.rate || 0))
+    }));
+
+    const totalAmount = snapshotItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+
+    if (isNaN(totalAmount) || totalAmount <= 0) {
+      throw new Error("Invalid total amount on quotation. Please verify service item rates and quantities.");
+    }
+
+    const snapshotClient = JSON.parse(JSON.stringify(quote.client));
+    const snapshotFromDetails = JSON.parse(JSON.stringify(quote.fromDetails));
 
     const newInvoice: Invoice = {
       id: `inv_${Date.now()}`,
@@ -517,19 +538,19 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       dueDate: dueDate,
       paymentTerms: quote.paymentTerms || settings.invoice.defaultPaymentTerms,
       clientId: quote.clientId,
-      client: quote.client,
-      items: quote.items,
-      totalAmount: quote.totalAmount,
+      client: snapshotClient,
+      items: snapshotItems,
+      totalAmount: totalAmount,
       paidAmount: 0,
-      balanceAmount: quote.totalAmount,
+      balanceAmount: totalAmount,
       paymentStatus: 'unpaid',
       status: 'sent',
-      fromDetails: quote.fromDetails,
+      fromDetails: snapshotFromDetails,
       notes: quote.notes || settings.invoice.defaultNotes,
       termsAndConditions: quote.termsAndConditions || settings.invoice.defaultTermsAndConditions,
-      companyLogoUrl: quote.companyLogoUrl,
-      clientLogoUrl: quote.clientLogoUrl,
-      signatureUrl: quote.signatureUrl,
+      companyLogoUrl: quote.companyLogoUrl || '',
+      clientLogoUrl: quote.clientLogoUrl || '',
+      signatureUrl: quote.signatureUrl || '',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
@@ -538,7 +559,13 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await persistToFirestore('invoices', newInvoice.id, newInvoice);
 
     // Update quotation status in state and Firestore
-    const updatedQuote = { ...quote, status: 'converted' as const, convertedToInvoiceId: newInvoice.id };
+    const updatedQuote = {
+      ...quote,
+      status: 'converted' as const,
+      convertedToInvoiceId: newInvoice.id,
+      updatedAt: new Date().toISOString()
+    };
+
     setQuotations(prev => prev.map(q => q.id === quotationId ? updatedQuote : q));
     await persistToFirestore('quotations', quotationId, updatedQuote);
 
@@ -550,7 +577,13 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setSettings(updatedSettings);
     await persistToFirestore('settings', 'company_settings', updatedSettings);
 
-    await logActivity(newInvoice.clientId, newInvoice.client.name, 'Invoice Converted', `Converted Quotation ${quote.quotationNumber} to Invoice ${newInvoice.invoiceNumber}`);
+    await logActivity(
+      newInvoice.clientId,
+      newInvoice.client.name,
+      'Quotation Converted to Invoice',
+      `Converted Quotation ${quote.quotationNumber} to Invoice ${newInvoice.invoiceNumber} (Invoice ID: ${newInvoice.id}, Quotation ID: ${quote.id})`
+    );
+
     return newInvoice;
   };
 
