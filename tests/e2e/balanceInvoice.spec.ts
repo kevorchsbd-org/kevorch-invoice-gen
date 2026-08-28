@@ -4,7 +4,7 @@ test.describe('Balance Invoice E2E Specs', () => {
   test('should login and navigate to balance-invoices page', async ({ page }) => {
     await page.goto('/login');
     await page.fill('input[type="email"]', 'kevorchsbd@gmail.com');
-    await page.fill('input[type="password"]', '123456');
+    await page.fill('input[type="password"]', 'kevorch123');
     await page.click('button[type="submit"]');
 
     await page.waitForURL('**/dashboard', { timeout: 15000 });
