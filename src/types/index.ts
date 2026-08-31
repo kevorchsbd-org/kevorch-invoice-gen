@@ -165,6 +165,7 @@ export interface CompanyProfile {
   companyName: string;
   email: string;
   phone: string;
+  phone2?: string;
   address: string;
   city: string;
   state: string;

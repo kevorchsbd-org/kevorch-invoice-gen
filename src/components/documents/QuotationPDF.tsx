@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Quotation } from '../../types';
 import { getClientAsset, revokeObjectUrl } from '../../lib/indexedDb';
+import { DynamicTextSection } from '../common/DynamicTextSection';
 
 interface DocumentProps {
   quotation: Quotation;
@@ -97,11 +98,12 @@ export const QuotationPDF: React.FC<DocumentProps> = ({ quotation }) => {
                 {fromDetails.pincode ? ` - ${fromDetails.pincode}` : ''}
               </p>
             )}
-            {(fromDetails.email || fromDetails.phone) && (
+            {(fromDetails.email || fromDetails.phone || fromDetails.phone2) && (
               <p className="text-black">
                 {fromDetails.email ? `Email: ${fromDetails.email}` : ''}
-                {fromDetails.email && fromDetails.phone ? ' | ' : ''}
+                {fromDetails.email && (fromDetails.phone || fromDetails.phone2) ? ' | ' : ''}
                 {fromDetails.phone ? `Phone: ${fromDetails.phone}` : ''}
+                {fromDetails.phone && fromDetails.phone2?.trim() ? ` / ${fromDetails.phone2.trim()}` : !fromDetails.phone && fromDetails.phone2?.trim() ? `Phone: ${fromDetails.phone2.trim()}` : ''}
               </p>
             )}
           </div>
@@ -211,14 +213,14 @@ export const QuotationPDF: React.FC<DocumentProps> = ({ quotation }) => {
 
       {/* Notes & Terms */}
       <div className="grid grid-cols-2 gap-6 text-[10px] text-black border-t border-gray-300 pt-4 mb-8">
-        <div>
-          <p className="font-bold text-black text-xs mb-1 uppercase tracking-wider">NOTES / REMARKS:</p>
-          <p className="whitespace-pre-line leading-relaxed text-black">{notes || 'N/A'}</p>
-        </div>
-        <div>
-          <p className="font-bold text-black text-xs mb-1 uppercase tracking-wider">TERMS & CONDITIONS:</p>
-          <p className="whitespace-pre-line leading-relaxed text-black">{termsAndConditions || 'N/A'}</p>
-        </div>
+        <DynamicTextSection
+          title="NOTES / REMARKS:"
+          content={notes}
+        />
+        <DynamicTextSection
+          title="TERMS & CONDITIONS:"
+          content={termsAndConditions}
+        />
       </div>
 
       {/* Footer Section */}

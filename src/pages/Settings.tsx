@@ -258,12 +258,22 @@ export const Settings: React.FC = () => {
               />
             </div>
             <div>
-              <label className="block text-gray-700 dark:text-gray-300 font-bold mb-1">Company Phone *</label>
+              <label className="block text-gray-700 dark:text-gray-300 font-bold mb-1">Company Phone Number 1 *</label>
               <input
                 type="text"
                 required
                 value={companyForm.phone}
                 onChange={(e) => setCompanyForm({ ...companyForm, phone: e.target.value })}
+                className="w-full px-3 py-2 text-xs bg-gray-50 dark:bg-[#252525] border border-gray-200 dark:border-[#333] rounded-xl focus:ring-1 focus:ring-[#E31B23]"
+              />
+            </div>
+            <div>
+              <label className="block text-gray-700 dark:text-gray-300 font-bold mb-1">Company Phone Number 2 (Optional)</label>
+              <input
+                type="text"
+                placeholder="e.g. +91 98765 43211"
+                value={companyForm.phone2 || ''}
+                onChange={(e) => setCompanyForm({ ...companyForm, phone2: e.target.value })}
                 className="w-full px-3 py-2 text-xs bg-gray-50 dark:bg-[#252525] border border-gray-200 dark:border-[#333] rounded-xl focus:ring-1 focus:ring-[#E31B23]"
               />
             </div>

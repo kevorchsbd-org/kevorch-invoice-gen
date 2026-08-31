@@ -4,6 +4,7 @@ export const initialCompanyProfile = {
   companyName: "KEVORCH SBD",
   email: "kevorchsbd@gmail.com",
   phone: "+91 98765 43210",
+  phone2: "",
   address: "124 Business Tech Park, Ground Floor",
   city: "Coimbatore",
   state: "Tamil Nadu",

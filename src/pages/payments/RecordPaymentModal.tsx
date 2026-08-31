@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Invoice, PaymentMethod } from '../../types';
 import { useData } from '../../context/DataContext';
 import { Modal } from '../../components/common/Modal';
+import { AutoGrowTextarea } from '../../components/common/AutoGrowTextarea';
 import { IndianRupee, Save, AlertCircle } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -222,8 +223,9 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
           <label className="block text-gray-700 dark:text-gray-300 font-bold mb-1">
             Payment Note / Remarks
           </label>
-          <textarea
+          <AutoGrowTextarea
             rows={2}
+            minHeight={64}
             disabled={isSubmitting}
             placeholder="e.g. 50% Advance received for web project"
             value={note}

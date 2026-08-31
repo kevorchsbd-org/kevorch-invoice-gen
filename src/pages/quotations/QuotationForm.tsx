@@ -3,6 +3,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useData } from '../../context/DataContext';
 import { ServiceItem, Client } from '../../types';
 import { ItemTableBuilder } from '../../components/common/ItemTableBuilder';
+import { AutoGrowTextarea } from '../../components/common/AutoGrowTextarea';
 import { ArrowLeft, Save, FileText, CheckCircle2, UserCheck } from 'lucide-react';
 
 export const QuotationForm: React.FC = () => {
@@ -229,7 +230,7 @@ export const QuotationForm: React.FC = () => {
             <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
               Notes / Remarks
             </label>
-            <textarea
+            <AutoGrowTextarea
               rows={4}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
@@ -241,7 +242,7 @@ export const QuotationForm: React.FC = () => {
             <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
               Terms and Conditions
             </label>
-            <textarea
+            <AutoGrowTextarea
               rows={4}
               value={termsAndConditions}
               onChange={(e) => setTermsAndConditions(e.target.value)}

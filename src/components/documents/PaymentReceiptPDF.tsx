@@ -1,5 +1,6 @@
 import React from 'react';
 import { Payment, Client, CompanyProfile } from '../../types';
+import { DynamicTextSection } from '../common/DynamicTextSection';
 
 interface PaymentReceiptPDFProps {
   payment: Payment;
@@ -24,7 +25,12 @@ export const PaymentReceiptPDF: React.FC<PaymentReceiptPDFProps> = ({
         <div>
           <h1 className="text-xl font-extrabold text-[#E31B23] tracking-tight">{companyProfile.companyName}</h1>
           <p className="text-[11px] text-gray-600 mt-1">{companyProfile.address}, {companyProfile.city}, {companyProfile.state} - {companyProfile.pincode}</p>
-          <p className="text-[11px] text-gray-600">Email: {companyProfile.email} | Phone: {companyProfile.phone}</p>
+          <p className="text-[11px] text-gray-600">
+            Email: {companyProfile.email}
+            {companyProfile.email && (companyProfile.phone || companyProfile.phone2) ? ' | ' : ''}
+            {companyProfile.phone ? `Phone: ${companyProfile.phone}` : ''}
+            {companyProfile.phone && companyProfile.phone2?.trim() ? ` / ${companyProfile.phone2.trim()}` : !companyProfile.phone && companyProfile.phone2?.trim() ? `Phone: ${companyProfile.phone2.trim()}` : ''}
+          </p>
         </div>
 
         <div className="text-right">
@@ -69,9 +75,13 @@ export const PaymentReceiptPDF: React.FC<PaymentReceiptPDFProps> = ({
       </div>
 
       {payment.note && (
-        <div className="p-4 bg-gray-50 rounded-xl border border-gray-200 mb-6">
-          <span className="text-[10px] uppercase font-bold text-gray-500">Payment Note:</span>
-          <p className="text-xs text-gray-700 mt-1">{payment.note}</p>
+        <div className="p-4 bg-gray-50 rounded-xl border border-gray-200 mb-6 h-auto">
+          <DynamicTextSection
+            title="PAYMENT NOTE:"
+            content={payment.note}
+            titleClassName="text-[10px] uppercase font-bold text-gray-500 mb-1"
+            contentClassName="text-xs text-gray-700 whitespace-pre-wrap break-words leading-relaxed [overflow-wrap:anywhere]"
+          />
         </div>
       )}
 

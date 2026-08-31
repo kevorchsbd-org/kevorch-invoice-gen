@@ -5,7 +5,7 @@ import { useData } from '../../context/DataContext';
 import { Modal } from '../common/Modal';
 import {
   FileText, CheckCircle2, AlertCircle, Download, ExternalLink,
-  Plus, X, Info, Eye
+  X, Info, Eye
 } from 'lucide-react';
 import html2pdf from 'html2pdf.js';
 import { saveQuotationPdf, saveInvoicePdf, saveBalanceInvoicePdf, saveLocalDocumentFile } from '../../lib/indexedDb';
@@ -60,7 +60,6 @@ export const SendEmailModal: React.FC<SendEmailModalProps> = ({
   const [toEmail, setToEmail] = useState('');
   const [ccList, setCcList] = useState<string[]>([]);
   const [newCcInput, setNewCcInput] = useState('');
-  const [isAddingCc, setIsAddingCc] = useState(false);
   const [saveCcToClient, setSaveCcToClient] = useState(false);
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
@@ -68,6 +67,7 @@ export const SendEmailModal: React.FC<SendEmailModalProps> = ({
   const [isDraftOpened, setIsDraftOpened] = useState(false);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [showSaveConfirmModal, setShowSaveConfirmModal] = useState(false);
 
   const pdfFilename = `${docNumber}_KEVORCH_SBD.pdf`;
 
@@ -102,7 +102,7 @@ export const SendEmailModal: React.FC<SendEmailModalProps> = ({
     if (isOpen && docItem) {
       setIsDraftOpened(false);
       setErrorMsg('');
-      setIsAddingCc(false);
+      setShowSaveConfirmModal(false);
 
       // 1. Primary To Email
       const primaryTo = client?.email || '';
@@ -142,81 +142,165 @@ export const SendEmailModal: React.FC<SendEmailModalProps> = ({
         bodyText += `\nPayment Terms: ${(docItem as any).paymentTerms}`;
       }
 
-      bodyText += `\n\nIf you have any questions or require assistance, please contact us at ${settings.company.email} or ${settings.company.phone}.\n\nBest regards,\n${settings.company.companyName}`;
+      let phoneDisplay = settings.company.phone || '';
+      if (settings.company.phone2?.trim()) {
+        phoneDisplay = phoneDisplay ? `${phoneDisplay} / ${settings.company.phone2.trim()}` : settings.company.phone2.trim();
+      }
+
+      bodyText += `\n\nIf you have any questions or require assistance, please contact us at ${settings.company.email}${phoneDisplay ? ` or ${phoneDisplay}` : ''}.\n\nBest regards,\n${settings.company.companyName}`;
 
       setMessage(bodyText);
     }
   }, [isOpen, docItem, documentType, docNumber, docAmountStr, client, clientName, settings]);
 
-  // CC Tag Handlers
-  const handleAddCc = () => {
-    if (!newCcInput.trim()) return;
-    const emailToAdd = newCcInput.trim();
+  // CC Tag Logic (Automatic Chip Addition without an Add button)
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const tryAddCcTag = (input: string): boolean => {
+    const emailToAdd = input.trim();
+    if (!emailToAdd) return false;
+
     if (!emailRegex.test(emailToAdd)) {
-      setErrorMsg('Please enter a valid CC email address.');
-      return;
+      setErrorMsg(`Invalid CC email format: "${emailToAdd}"`);
+      return false;
     }
 
-    if (emailToAdd.toLowerCase() === toEmail.toLowerCase()) {
+    if (emailToAdd.toLowerCase() === toEmail.trim().toLowerCase()) {
       setErrorMsg('CC email cannot be the same as the primary recipient To email.');
-      return;
+      return false;
     }
 
-    if (!ccList.some(c => c.toLowerCase() === emailToAdd.toLowerCase())) {
-      setCcList(prev => [...prev, emailToAdd]);
+    if (ccList.some(c => c.toLowerCase() === emailToAdd.toLowerCase())) {
+      setErrorMsg(`CC email "${emailToAdd}" is already added.`);
+      return false;
     }
+
+    setCcList(prev => [...prev, emailToAdd]);
     setNewCcInput('');
-    setIsAddingCc(false);
     setErrorMsg('');
+    return true;
+  };
+
+  const handleCcInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    if (val.includes(',')) {
+      const parts = val.split(',');
+      for (let i = 0; i < parts.length - 1; i++) {
+        tryAddCcTag(parts[i]);
+      }
+      setNewCcInput(parts[parts.length - 1]);
+    } else {
+      setNewCcInput(val);
+      setErrorMsg('');
+    }
+  };
+
+  const handleCcKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (newCcInput.trim()) {
+        tryAddCcTag(newCcInput);
+      }
+    } else if (e.key === 'Tab') {
+      if (newCcInput.trim()) {
+        const added = tryAddCcTag(newCcInput);
+        if (!added) {
+          e.preventDefault();
+        }
+      }
+    }
+  };
+
+  const handleCcBlur = () => {
+    if (newCcInput.trim()) {
+      tryAddCcTag(newCcInput);
+    }
   };
 
   const handleRemoveCc = (indexToRemove: number) => {
     setCcList(prev => prev.filter((_, idx) => idx !== indexToRemove));
   };
 
-  // PDF Generation & Download Helper
-  const handleGenerateAndDownloadPdf = async (): Promise<boolean> => {
+  // Helper to generate PDF Blob canvas
+  const generatePdfBlob = async (): Promise<Blob | null> => {
+    let elementId = 'quotation-pdf-canvas';
+    if (documentType === 'Invoice') elementId = 'invoice-pdf-canvas';
+    if (documentType === 'Balance Invoice') elementId = 'balance-invoice-pdf-canvas';
+    if (documentType === 'Payment Receipt') elementId = 'payment-receipt-pdf-canvas';
+
+    let element = window.document.getElementById(elementId);
+    if (!element) {
+      element = window.document.getElementById(`${elementId}-preview`);
+    }
+
+    if (!element) {
+      console.warn(`PDF Canvas element #${elementId} not found in DOM.`);
+      return null;
+    }
+
+    const opt = {
+      margin: 0,
+      filename: pdfFilename,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true, logging: false },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+
+    const pdfBlob: Blob = await (html2pdf() as any).set(opt).from(element).outputPdf('blob');
+
+    // Save locally to IndexedDB
+    try {
+      if (documentType === 'Invoice') await saveInvoicePdf(docItem.id, pdfBlob, pdfFilename);
+      else if (documentType === 'Quotation') await saveQuotationPdf(docItem.id, pdfBlob, pdfFilename);
+      else if (documentType === 'Balance Invoice') await saveBalanceInvoicePdf(docItem.id, pdfBlob, pdfFilename);
+      else await saveLocalDocumentFile(docItem.id, pdfBlob, pdfFilename);
+    } catch (err) {
+      console.warn('IndexedDB PDF save notice:', err);
+    }
+
+    return pdfBlob;
+  };
+
+  // Execute PDF Save with File System Access API (showSaveFilePicker) & fallback
+  const executeSavePdf = async () => {
     setIsDownloadingPdf(true);
     try {
-      let elementId = 'quotation-pdf-canvas';
-      if (documentType === 'Invoice') elementId = 'invoice-pdf-canvas';
-      if (documentType === 'Balance Invoice') elementId = 'balance-invoice-pdf-canvas';
-      if (documentType === 'Payment Receipt') elementId = 'payment-receipt-pdf-canvas';
-
-      let element = window.document.getElementById(elementId);
-      if (!element) {
-        element = window.document.getElementById(`${elementId}-preview`);
-      }
-
-      if (!element) {
-        console.warn(`PDF Canvas element #${elementId} not found in DOM.`);
+      const pdfBlob = await generatePdfBlob();
+      if (!pdfBlob) {
+        setErrorMsg('Could not render document canvas for download.');
         setIsDownloadingPdf(false);
-        return false;
+        return;
       }
 
-      const opt = {
-        margin: 0,
-        filename: pdfFilename,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true, logging: false },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-      };
-
-      const pdfBlob: Blob = await (html2pdf() as any).set(opt).from(element).outputPdf('blob');
-
-      // Save locally to IndexedDB
-      try {
-        if (documentType === 'Invoice') await saveInvoicePdf(docItem.id, pdfBlob, pdfFilename);
-        else if (documentType === 'Quotation') await saveQuotationPdf(docItem.id, pdfBlob, pdfFilename);
-        else if (documentType === 'Balance Invoice') await saveBalanceInvoicePdf(docItem.id, pdfBlob, pdfFilename);
-        else await saveLocalDocumentFile(docItem.id, pdfBlob, pdfFilename);
-      } catch (err) {
-        console.warn('IndexedDB PDF save notice:', err);
+      // 1. Preferred File System Access API
+      if ('showSaveFilePicker' in window) {
+        try {
+          const handle = await (window as any).showSaveFilePicker({
+            suggestedName: pdfFilename,
+            types: [
+              {
+                description: 'PDF Document',
+                accept: { 'application/pdf': ['.pdf'] }
+              }
+            ]
+          });
+          const writable = await handle.createWritable();
+          await writable.write(pdfBlob);
+          await writable.close();
+          setIsDownloadingPdf(false);
+          setShowSaveConfirmModal(false);
+          return;
+        } catch (err: any) {
+          if (err.name === 'AbortError') {
+            // User cancelled save dialog
+            setIsDownloadingPdf(false);
+            return;
+          }
+          console.warn('showSaveFilePicker failed, falling back to Blob download:', err);
+        }
       }
 
-      // Trigger browser file download
+      // 2. Standard Blob URL fallback download
       const downloadUrl = URL.createObjectURL(pdfBlob);
       const a = window.document.createElement('a');
       a.href = downloadUrl;
@@ -227,20 +311,22 @@ export const SendEmailModal: React.FC<SendEmailModalProps> = ({
       URL.revokeObjectURL(downloadUrl);
 
       setIsDownloadingPdf(false);
-      return true;
+      setShowSaveConfirmModal(false);
     } catch (err) {
-      console.error('PDF generation error:', err);
+      console.error('PDF Save error:', err);
       setIsDownloadingPdf(false);
-      return false;
     }
   };
 
-  // Primary Action: Open Email Client
+  // Primary Action: Open Email Client Draft
   const handleOpenEmail = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (newCcInput.trim()) {
+      tryAddCcTag(newCcInput);
+    }
+
     // 1. Validate To
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!toEmail.trim() || !emailRegex.test(toEmail.trim())) {
       setErrorMsg('Please enter a valid recipient email.');
       return;
@@ -274,9 +360,6 @@ export const SendEmailModal: React.FC<SendEmailModalProps> = ({
       }
     }
 
-    // Auto-generate & download PDF locally before opening mail app
-    await handleGenerateAndDownloadPdf();
-
     // Build URL-encoded mailto string
     const ccParam = finalCc.length > 0 ? `&cc=${encodeURIComponent(finalCc.join(','))}` : '';
     const mailtoUrl = `mailto:${encodeURIComponent(toEmail.trim())}?subject=${encodeURIComponent(subject.trim())}&body=${encodeURIComponent(message.trim())}${ccParam}`;
@@ -305,6 +388,69 @@ export const SendEmailModal: React.FC<SendEmailModalProps> = ({
     }
 
     setIsDraftOpened(true);
+
+    // Show Confirmation Modal to ask if user wants to download/save PDF
+    setShowSaveConfirmModal(true);
+  };
+
+  // Helper to parse message and highlight clickable email and phone links
+  const renderMessageWithClickableContacts = (text: string) => {
+    const lines = text.split('\n');
+    const combinedRegex = /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})|(\+?\d{1,4}[-.\s]?\(?\d{2,5}\)?[-.\s]?\d{3,5}[-.\s]?\d{3,5})/g;
+
+    return lines.map((line, lIdx) => {
+      const parts: React.ReactNode[] = [];
+      let lastIndex = 0;
+      let match: RegExpExecArray | null;
+
+      combinedRegex.lastIndex = 0;
+
+      while ((match = combinedRegex.exec(line)) !== null) {
+        if (match.index > lastIndex) {
+          parts.push(line.substring(lastIndex, match.index));
+        }
+        const matchedText = match[0];
+        if (match[1]) {
+          // Email match
+          parts.push(
+            <a
+              key={`email-${lIdx}-${match.index}`}
+              href={`mailto:${matchedText}`}
+              className="text-blue-600 dark:text-blue-400 font-semibold underline hover:text-blue-800 transition"
+              title={`Compose email to ${matchedText}`}
+            >
+              {matchedText}
+            </a>
+          );
+        } else if (match[2] && matchedText.replace(/\D/g, '').length >= 7) {
+          // Phone match
+          const cleanPhone = matchedText.replace(/[^\d+]/g, '');
+          parts.push(
+            <a
+              key={`phone-${lIdx}-${match.index}`}
+              href={`tel:${cleanPhone}`}
+              className="text-[#E31B23] dark:text-red-400 font-bold underline hover:text-red-700 transition"
+              title={`Call ${matchedText}`}
+            >
+              {matchedText}
+            </a>
+          );
+        } else {
+          parts.push(matchedText);
+        }
+        lastIndex = combinedRegex.lastIndex;
+      }
+
+      if (lastIndex < line.length) {
+        parts.push(line.substring(lastIndex));
+      }
+
+      return (
+        <div key={lIdx} className="min-h-[1.25rem]">
+          {parts.length > 0 ? parts : line}
+        </div>
+      );
+    });
   };
 
   return (
@@ -397,7 +543,7 @@ export const SendEmailModal: React.FC<SendEmailModalProps> = ({
                     {/* To Field */}
                     <div>
                       <label className="block font-bold text-gray-700 dark:text-gray-300 mb-1">
-                        To
+                        To *
                       </label>
                       <input
                         type="email"
@@ -409,11 +555,11 @@ export const SendEmailModal: React.FC<SendEmailModalProps> = ({
                       />
                     </div>
 
-                    {/* CC Field Tag Chips */}
+                    {/* CC Field Tag Chips (Automatic CC Addition) */}
                     <div>
                       <div className="flex items-center justify-between mb-1">
                         <label className="font-bold text-gray-700 dark:text-gray-300">
-                          CC
+                          CC (Automatic Tags)
                         </label>
                         {client && (
                           <label className="flex items-center space-x-1.5 text-[10px] text-gray-500 cursor-pointer select-none">
@@ -428,12 +574,12 @@ export const SendEmailModal: React.FC<SendEmailModalProps> = ({
                         )}
                       </div>
 
-                      {/* CC Tag Chips & Add CC Button */}
-                      <div className="flex flex-wrap items-center gap-1.5 p-2 bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#333] rounded-lg min-h-[40px]">
+                      {/* CC Chips Container with Inline Input */}
+                      <div className="flex flex-wrap items-center gap-1.5 p-2 bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#333] rounded-lg min-h-[42px]">
                         {ccList.map((ccEmail, idx) => (
                           <span
                             key={idx}
-                            className="inline-flex items-center space-x-1 px-2.5 py-0.5 bg-gray-100 dark:bg-[#252525] border border-gray-200 dark:border-[#333] rounded-md font-semibold text-gray-800 dark:text-gray-200 text-[11px]"
+                            className="inline-flex items-center space-x-1 px-2.5 py-1 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/50 rounded-md font-semibold text-gray-800 dark:text-gray-200 text-[11px]"
                           >
                             <span>{ccEmail}</span>
                             <button
@@ -447,51 +593,19 @@ export const SendEmailModal: React.FC<SendEmailModalProps> = ({
                           </span>
                         ))}
 
-                        {isAddingCc ? (
-                          <div className="flex items-center space-x-1">
-                            <input
-                              type="email"
-                              autoFocus
-                              placeholder="cc@example.com"
-                              value={newCcInput}
-                              onChange={(e) => setNewCcInput(e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                  e.preventDefault();
-                                  handleAddCc();
-                                }
-                                if (e.key === 'Escape') {
-                                  setIsAddingCc(false);
-                                }
-                              }}
-                              className="px-2 py-0.5 text-[11px] bg-gray-50 dark:bg-[#252525] border border-gray-300 dark:border-[#444] rounded outline-none w-48"
-                            />
-                            <button
-                              type="button"
-                              onClick={handleAddCc}
-                              className="px-2 py-0.5 bg-[#E31B23] text-white font-bold text-[10px] rounded hover:bg-red-700 transition"
-                            >
-                              Add
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setIsAddingCc(false)}
-                              className="text-gray-400 hover:text-gray-600 p-0.5"
-                            >
-                              <X className="w-3 h-3" />
-                            </button>
-                          </div>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => setIsAddingCc(true)}
-                            className="inline-flex items-center space-x-1 px-2 py-0.5 text-xs text-[#E31B23] font-bold hover:bg-red-50 dark:hover:bg-red-950/30 rounded-md transition"
-                          >
-                            <Plus className="w-3.5 h-3.5" />
-                            <span>Add CC</span>
-                          </button>
-                        )}
+                        <input
+                          type="email"
+                          placeholder={ccList.length === 0 ? "Type CC email and press Enter or comma..." : "Add another CC email..."}
+                          value={newCcInput}
+                          onChange={handleCcInputChange}
+                          onKeyDown={handleCcKeyDown}
+                          onBlur={handleCcBlur}
+                          className="flex-grow min-w-[200px] px-2 py-1 text-xs bg-transparent border-none outline-none focus:ring-0 text-gray-900 dark:text-gray-100"
+                        />
                       </div>
+                      <p className="text-[10px] text-gray-400 mt-1">
+                        Type an email address and press Enter, comma, or Tab to add it automatically.
+                      </p>
                     </div>
                   </div>
 
@@ -499,7 +613,7 @@ export const SendEmailModal: React.FC<SendEmailModalProps> = ({
                   <div className="space-y-3">
                     <div>
                       <label className="block font-bold text-gray-700 dark:text-gray-300 mb-1">
-                        Subject
+                        Subject *
                       </label>
                       <input
                         type="text"
@@ -518,12 +632,23 @@ export const SendEmailModal: React.FC<SendEmailModalProps> = ({
                         rows={5}
                         value={message}
                         onChange={(e) => setMessage(e.target.value)}
-                        className="w-full px-3 py-2 text-xs bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#333] rounded-lg focus:ring-1 focus:ring-[#E31B23] leading-relaxed resize-none"
+                        className="w-full px-3 py-2 text-xs bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#333] rounded-lg focus:ring-1 focus:ring-[#E31B23] leading-relaxed resize-y min-h-[100px]"
                       />
+                    </div>
+
+                    {/* Interactive Message Body Contact Highlight Preview */}
+                    <div className="p-3.5 bg-gray-50/80 dark:bg-[#222]/60 rounded-xl border border-gray-200/80 dark:border-[#2A2A2A] space-y-2">
+                      <div className="flex items-center justify-between text-[11px] font-bold text-gray-700 dark:text-gray-300">
+                        <span>Message Preview &amp; Contact Links</span>
+                        <span className="text-gray-400 text-[10px] font-normal">Click phone/email to trigger dialer or mail app</span>
+                      </div>
+                      <div className="p-3 bg-white dark:bg-[#1A1A1A] rounded-lg border border-gray-200 dark:border-[#333] text-xs leading-relaxed text-gray-800 dark:text-gray-200 font-sans shadow-xs">
+                        {renderMessageWithClickableContacts(message)}
+                      </div>
                     </div>
                   </div>
 
-                  {/* DOCUMENT SECTION: Compact Horizontal Card */}
+                  {/* DOCUMENT SECTION: Compact Card */}
                   <div className="p-3.5 bg-gray-50 dark:bg-[#222] rounded-xl border border-gray-200 dark:border-[#2A2A2A] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="flex items-center space-x-3">
                       <div className="p-2 bg-red-100 dark:bg-red-950/40 text-[#E31B23] rounded-lg flex-shrink-0">
@@ -549,12 +674,12 @@ export const SendEmailModal: React.FC<SendEmailModalProps> = ({
                       </button>
                       <button
                         type="button"
-                        onClick={handleGenerateAndDownloadPdf}
+                        onClick={executeSavePdf}
                         disabled={isDownloadingPdf}
                         className="px-3 py-1.5 bg-white dark:bg-[#1A1A1A] border border-gray-200 dark:border-[#333] hover:bg-gray-100 dark:hover:bg-[#333] text-gray-800 dark:text-gray-200 rounded-lg font-bold text-xs flex items-center space-x-1 transition"
                       >
                         <Download className="w-3.5 h-3.5 text-[#E31B23]" />
-                        <span>{isDownloadingPdf ? 'Downloading...' : 'Download PDF'}</span>
+                        <span>{isDownloadingPdf ? 'Saving...' : 'Save PDF'}</span>
                       </button>
                     </div>
                   </div>
@@ -562,20 +687,20 @@ export const SendEmailModal: React.FC<SendEmailModalProps> = ({
                   {/* HELPER NOTICE */}
                   <div className="p-2.5 bg-amber-50/60 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-900/40 rounded-lg text-[11px] text-amber-800 dark:text-amber-300 flex items-center space-x-2">
                     <Info className="w-3.5 h-3.5 flex-shrink-0 text-amber-600" />
-                    <span>The PDF is ready. Download it and attach it to your email before sending.</span>
+                    <span>Opening your mail draft will ask if you want to save a copy of the PDF document.</span>
                   </div>
                 </div>
 
-                {/* STICKY / FIXED FOOTER */}
+                {/* STICKY FOOTER */}
                 <div className="px-6 py-3.5 bg-gray-50 dark:bg-[#222] border-t border-gray-200 dark:border-[#2A2A2A] flex items-center justify-between flex-shrink-0">
                   <div className="text-[11px]">
                     {isDraftOpened ? (
                       <span className="font-bold text-emerald-600 dark:text-emerald-400 flex items-center space-x-1">
                         <CheckCircle2 className="w-3.5 h-3.5" />
-                        <span>Email draft opened</span>
+                        <span>Email draft opened in mail app</span>
                       </span>
                     ) : (
-                      <span className="text-gray-400">Pre-fills recipient, subject & body in mail app</span>
+                      <span className="text-gray-400">Pre-fills recipient, subject &amp; message in mail app</span>
                     )}
                   </div>
 
@@ -591,7 +716,7 @@ export const SendEmailModal: React.FC<SendEmailModalProps> = ({
                       type="submit"
                       className="px-5 py-2 bg-[#E31B23] hover:bg-red-700 text-white rounded-xl font-bold text-xs flex items-center space-x-1.5 shadow-md transition"
                     >
-                      <span>Open Email</span>
+                      <span>Open Email Draft</span>
                       <ExternalLink className="w-3.5 h-3.5" />
                     </button>
                   </div>
@@ -614,11 +739,12 @@ export const SendEmailModal: React.FC<SendEmailModalProps> = ({
             <div className="flex justify-end space-x-2">
               <button
                 type="button"
-                onClick={handleGenerateAndDownloadPdf}
+                onClick={executeSavePdf}
+                disabled={isDownloadingPdf}
                 className="px-3.5 py-1.5 bg-[#E31B23] hover:bg-red-700 text-white text-xs font-bold rounded-xl flex items-center space-x-1.5 shadow-xs transition"
               >
                 <Download className="w-4 h-4" />
-                <span>Download PDF</span>
+                <span>{isDownloadingPdf ? 'Saving...' : 'Save PDF'}</span>
               </button>
             </div>
             <div className="border border-gray-200 dark:border-[#2A2A2A] rounded-xl overflow-hidden shadow-inner bg-gray-100 dark:bg-[#111] p-4 sm:p-6 max-h-[70vh] overflow-y-auto">
@@ -632,6 +758,49 @@ export const SendEmailModal: React.FC<SendEmailModalProps> = ({
                   companyProfile={settings.company}
                 />
               )}
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Save PDF Confirmation Modal */}
+      {showSaveConfirmModal && (
+        <Modal
+          isOpen={showSaveConfirmModal}
+          onClose={() => setShowSaveConfirmModal(false)}
+          title="Save Document Copy?"
+          maxWidth="md"
+        >
+          <div className="space-y-4 text-xs font-sans p-1">
+            <div className="flex items-start space-x-3 bg-red-50 dark:bg-red-950/30 p-3.5 rounded-xl border border-red-200 dark:border-red-900/40">
+              <Download className="w-5 h-5 text-[#E31B23] flex-shrink-0 mt-0.5" />
+              <div>
+                <h3 className="font-extrabold text-gray-900 dark:text-gray-100 text-sm">
+                  Save a copy of {docNumber}?
+                </h3>
+                <p className="text-gray-600 dark:text-gray-300 mt-1 leading-relaxed">
+                  Your email draft has been opened in your email client. Would you like to save/download a copy of the generated PDF document (<span className="font-mono font-bold text-gray-900 dark:text-gray-100">{pdfFilename}</span>)?
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end space-x-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowSaveConfirmModal(false)}
+                className="px-4 py-2 bg-gray-100 dark:bg-[#252525] border border-gray-200 dark:border-[#333] text-gray-700 dark:text-gray-300 font-bold rounded-xl hover:bg-gray-200 dark:hover:bg-[#333] transition"
+              >
+                No, Skip Download
+              </button>
+              <button
+                type="button"
+                onClick={executeSavePdf}
+                disabled={isDownloadingPdf}
+                className="px-5 py-2 bg-[#E31B23] hover:bg-red-700 text-white font-bold rounded-xl flex items-center space-x-1.5 shadow-md transition"
+              >
+                <Download className="w-4 h-4" />
+                <span>{isDownloadingPdf ? 'Saving...' : 'Yes, Save PDF'}</span>
+              </button>
             </div>
           </div>
         </Modal>
